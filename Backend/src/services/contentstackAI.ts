@@ -100,7 +100,7 @@ export class ContentStackAIService {
       return {
         success: false,
         response: 'I encountered an error while processing your request. Please try again.',
-        error: error.message
+        error: 'Service temporarily unavailable' // Generic error, never expose internal details
       };
     }
   }
@@ -168,18 +168,28 @@ export class ContentStackAIService {
       description: tool.description
     }));
 
-    const systemMessage = `You are an intelligent tool selector for ContentStack CMS. Based on the user's query, select the most appropriate tools to gather comprehensive information.
+    const systemMessage = `You are an intelligent content retrieval system for a website powered by ContentStack CMS. Your role is to select the most efficient tools to answer visitor questions accurately.
 
-Available ContentStack tools:
+🎯 OBJECTIVE: Choose the minimal set of tools needed to provide accurate, helpful information to website visitors.
+
+Available ContentStack content tools:
 ${JSON.stringify(toolDescriptions, null, 2)}
 
-For the query "${userQuery}", select 1-3 tools that would provide the most relevant information. Consider:
-1. Start with content types if the user wants to understand the website structure
-2. Get entries from relevant content types
-3. Get assets if the query involves images or files
-4. Get environments if deployment/publishing info is needed
+🔍 TOOL SELECTION STRATEGY for query: "${userQuery}"
 
-Return ONLY a JSON array of tool names, like: ["get_all_content_types", "get_all_entries", "get_all_assets"]`;
+Priority Guidelines:
+1. **Navigation/General Questions**: Start with content types to understand site structure
+2. **Specific Content**: Get entries from relevant content types (blogs, products, pages)
+3. **Media/Images**: Include assets only if explicitly about images, files, or downloads
+4. **Technical/Admin**: Avoid environments unless specifically about publishing/deployment
+
+⚡ EFFICIENCY RULES:
+- Select only 1-3 most relevant tools
+- Prioritize tools that directly answer the user's question
+- Avoid redundant data collection
+- Focus on visitor-facing content, not technical backend details
+
+Return ONLY a JSON array of tool names: ["tool1", "tool2", "tool3"]`;
 
     try {
       const result = await groq.sendToGroq([
@@ -260,12 +270,20 @@ Return ONLY a JSON array of tool names, like: ["get_all_content_types", "get_all
     responseModel: string = 'llama-3.3-70b-versatile'
   ): Promise<string> {
     
-    // Enhanced system context optimized for different LLM providers
-    let systemContext = `You are an expert ContentStack CMS analyst. You have been provided with LIVE CONTENT DATA from a ContentStack-powered website. Your job is to analyze this data and answer user questions about the website's content, structure, and information.
+    // Enhanced system context optimized for production website assistance
+    let systemContext = `You are a helpful AI assistant for this website. Your role is to help visitors find information and answer questions using only the actual content and data from this website.
 
-IMPORTANT: The data provided below is the ACTUAL CONTENT from the website you're analyzing. This is NOT generic information - it's the real, live content from the user's website.
+🔒 GUARDRAILS:
+- ONLY use information from the provided website content data
+- NEVER invent, assume, or hallucinate information not present in the data
+- If information is not available in the provided data, clearly state this limitation
+- Do not make up product details, prices, availability, or contact information
+- Always base your responses on factual content from the website
+- Do NOT discuss ContentStack, CMS, or technical backend details
+- Focus ONLY on the website's actual content, products, services, or information
 
-CONTEXT: You are analyzing a ContentStack-powered website. The user is asking questions about this specific website's content.`;
+🎯 YOUR MISSION:
+You have access to real, live content from this website. Use this data to provide accurate, helpful responses about what's available on this website - not about the technology behind it.`;
     
     // Build comprehensive context from multiple tool results
     const contextParts: string[] = [];
@@ -302,17 +320,35 @@ CONTEXT: You are analyzing a ContentStack-powered website. The user is asking qu
     if (contextParts.length > 0) {
       systemContext += `\n\n📊 WEBSITE CONTENT DATA:${contextParts.join('\n')}`;
     } else {
-      systemContext += `\n\n⚠️ No ContentStack data was available for this query.`;
+      systemContext += `\n\n⚠️ IMPORTANT: No specific website content data is currently available for this query. 
+      
+🚫 Since you don't have access to the actual website content, you should:
+- Inform the user that you need more specific information to help them with this website
+- Suggest they try asking about different topics or sections of the website
+- Do NOT mention ContentStack, CMS, or technical details
+- Focus on helping them find information that might be available on the website`;
     }
 
-    systemContext += `\n\n🎯 INSTRUCTIONS:
-- Analyze the ACTUAL content data provided above (this is real website content, not examples)
-- Answer the user's question using the specific information from this website
-- Be specific and reference exact content, links, images, or data found in the content
-- If looking for links, search through the HTML content in the data
-- If the user asks about website content, they're referring to THIS website whose data is provided above
+    systemContext += `\n\n📋 RESPONSE GUIDELINES:
+- Provide concise, accurate answers based EXCLUSIVELY on the website content above
+- Talk about the website's content, products, services, or information - NOT about ContentStack or CMS
+- If asked about anything not related to this website's content, politely redirect: "I'm here to help with information about this website. What would you like to know about our content?"
+- Reference specific details, links, or information found in the actual website data
+- If asked about products, services, or content not in the data, say "I don't have that information available on this website"
+- Keep responses conversational but professional - you're representing this website
+- For general questions (math, weather, etc.), say: "I can only help with questions about this website's content"
 
-Please provide a comprehensive, helpful response based on the actual ContentStack data provided.`;
+⚠️ CRITICAL: Never mention ContentStack, CMS, or technical details. Focus only on the website's actual content and services. Never guess, assume or create information.
+
+📝 RESPONSE FORMATTING GUIDELINES:
+- Use markdown formatting for better readability
+- Structure information with headings (## for main topics, ### for subtopics)
+- Use bullet points (-) for lists of items
+- Use **bold** for important information or key terms
+- Format links as [text](url) when available in the content
+- Use numbered lists (1. 2. 3.) for step-by-step instructions
+- Keep responses well-organized and scannable
+- Use line breaks to separate different topics or sections`;
 
     try {
       // Use user's chosen LLM provider for response generation
@@ -336,12 +372,8 @@ Please provide a comprehensive, helpful response based on the actual ContentStac
       }
     } catch (error) {
       console.error('Enhanced AI response generation failed:', error);
-      // Fallback to basic response with raw data
-      const dataString = Object.keys(multiToolData).length > 0 
-        ? `Here's the available ContentStack data: ${JSON.stringify(multiToolData, null, 2)}`
-        : 'Unable to retrieve ContentStack data at this time.';
-      
-      return `I encountered an issue generating the AI response, but ${dataString}`;
+      // NEVER expose raw data to end users - provide a clean, professional error message
+      return `I apologize, but I'm having trouble processing your request right now. Please try asking your question in a different way, or contact our support team if you need immediate assistance.`;
     }
   }
 
@@ -354,20 +386,40 @@ Please provide a comprehensive, helpful response based on the actual ContentStac
     additionalContext?: string
   ): Promise<LLMResult> {
     
-    // Build context for the LLM
-    let systemContext = `You are a helpful AI assistant with access to ContentStack content management data. `;
+    // Build context for the LLM - Professional website assistant
+    let systemContext = `You are an AI assistant for this website. Your role is to help visitors using only verified information from the website's content.
+
+🔒 SAFETY GUARDRAILS:
+- Only provide information that exists in the actual website content
+- Never invent or assume details not present in the provided data
+- If information isn't available, clearly state this limitation
+- Maintain a professional, helpful tone as a website representative
+- Do NOT mention ContentStack, CMS, or any technical backend details
+- Focus ONLY on the website's actual content, products, and services`;
     
     if (contentData?.success && contentData.data) {
-      systemContext += `\n\nContent from ContentStack:\n${JSON.stringify(contentData.data, null, 2)}`;
+      systemContext += `\n\n📊 WEBSITE CONTENT DATA:\n${JSON.stringify(contentData.data, null, 2)}
+      
+Use this content to answer the user's question about this website accurately and concisely. Talk about the website's content, not about ContentStack or CMS.`;
     } else if (contentData?.error) {
-      systemContext += `\n\nNote: I couldn't fetch the latest content from ContentStack (${contentData.error}), but I can still help with general information.`;
+      systemContext += `\n\n⚠️ Content retrieval issue: ${contentData.error}
+      
+Since specific website content isn't available, inform the user that you need more information to help them with this website.`;
     }
 
     if (additionalContext) {
-      systemContext += `\n\nAdditional context: ${additionalContext}`;
+      systemContext += `\n\nAdditional verified context: ${additionalContext}`;
     }
 
-    systemContext += `\n\nPlease provide a helpful, accurate response based on the available content. If the content data is available, reference it in your response. If not, provide general guidance.`;
+    systemContext += `\n\n📝 RESPONSE REQUIREMENTS:
+- Be concise and directly address the user's question about this website
+- Reference specific website content when available  
+- If content is unavailable, suggest alternative topics about the website
+- Maintain a professional, website-appropriate tone
+- Never mention ContentStack, CMS, or technical details
+- For off-topic questions, redirect: "I'm here to help with information about this website"
+- Format your response using markdown for better readability
+- Use headings, bullet points, and bold text appropriately`;
 
     const messages: CleanMessage[] = [
       {
@@ -385,19 +437,13 @@ Please provide a comprehensive, helpful response based on the actual ContentStac
       return await groq.sendToGroq(messages, 'llama-3.3-70b-versatile');
     } catch (groqError) {
       console.error('Groq LLM error:', groqError);
-      // Fallback response with content data if available
-      let fallbackResponse = 'I apologize, but the AI service is unavailable right now.';
-      
-      if (contentData?.success && contentData.data) {
-        fallbackResponse = `Here's the raw data from ContentStack: ${JSON.stringify(contentData.data, null, 2)}`;
-      } else if (contentData?.error) {
-        fallbackResponse = `Unable to fetch content from ContentStack. Error: ${contentData.error}`;
-      }
+      // NEVER expose raw data or technical details to end users
+      const fallbackResponse = 'I apologize, but I\'m having trouble accessing the website information right now. Please try again in a moment, or rephrase your question.';
       
       return {
         success: true,
         content: fallbackResponse,
-        error: 'LLM service unavailable, showing raw data',
+        error: 'LLM service unavailable',
         provider: 'groq'
       };
     }
