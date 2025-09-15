@@ -20,6 +20,15 @@ async function testContentStackAI() {
     projectId:
       process.env.CONTENTSTACK_PROJECT_ID || "68a96ab5567b0b50bd700055", // Optional
     context: "Testing ContentStack MCP integration",
+
+    // 🤖 LLM Provider Options (only models you have access to):
+    //responseProvider: "groq",
+    //responseModel: "llama-3.3-70b-versatile",
+    //responseProvider: "openrouter",
+    //responseModel: "openai/gpt-oss-20b:free",
+    
+    responseProvider: "gemini", // Testing fixed Gemini implementation
+    responseModel: "gemini-2.5-flash"
   };
 
   console.log('📋 Test Configuration:');
@@ -27,6 +36,8 @@ async function testContentStackAI() {
   console.log(`  API Key: ${testConfig.apiKey.substring(0, 8)}...`);
   console.log(`  Project ID: ${testConfig.projectId || 'Not specified'}`);
   console.log(`  Query: "${testConfig.query}"`);
+  console.log(`  🧠 Tool Selection: Groq (fixed)`);
+  console.log(`  🎯 Response Generation: ${testConfig.responseProvider}:${testConfig.responseModel}`);
   console.log();
 
   try {

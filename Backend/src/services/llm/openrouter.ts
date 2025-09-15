@@ -3,12 +3,12 @@ import { CleanMessage, LLMResult } from '../../types';
 
 // OpenRouter API functions (supports Mistral, OpenAI, and other models)
 const OPENROUTER_MODELS = [
-  // Mistral models
+  // Mistral models (via OpenRouter)
   'mistralai/mistral-small-3.2-24b-instruct:free',
   'mistralai/mistral-7b-instruct:free',
   'mistralai/mixtral-8x7b-instruct:free',
   'mistralai/mistral-large-2407',
-  // OpenAI models
+  // OpenAI models (via OpenRouter)
   'openai/gpt-oss-20b:free',
   'openai/gpt-3.5-turbo',
   'openai/gpt-4',

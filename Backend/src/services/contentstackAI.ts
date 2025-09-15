@@ -1,5 +1,6 @@
 import { ContentStackMCPService, contentStackMCPManager } from './contentstackMCP';
 import * as groq from './llm/groq';
+import * as llm from './llm';  // Full LLM service for user provider choice
 import { CleanMessage, LLMResult } from '../types';
 
 export interface ContentStackQuery {
@@ -8,6 +9,8 @@ export interface ContentStackQuery {
   apiKey: string;
   projectId?: string;
   context?: string;
+  responseProvider?: string;  // LLM provider for response generation (user choice)
+  responseModel?: string;     // LLM model for response generation (user choice)
 }
 
 export interface ContentStackResponse {
@@ -15,6 +18,9 @@ export interface ContentStackResponse {
   response: string;
   contentData?: any;
   error?: string;
+  processingTime?: string;
+  toolSelectionProvider?: string;
+  responseProvider?: string;
 }
 
 /**
@@ -71,17 +77,22 @@ export class ContentStackAIService {
         };
       }
 
-      // Step 6: Generate comprehensive AI response using all gathered data
+      // Step 6: Generate comprehensive AI response using user's chosen LLM provider
       const enhancedResponse = await this.generateEnhancedAIResponse(
         query.query,
         multiToolData,
-        query.tenantId
+        query.tenantId,
+        query.responseProvider || 'groq',  // Default to groq if not specified
+        query.responseModel || 'llama-3.3-70b-versatile'  // Default model
       );
 
       return {
         success: true,
         response: enhancedResponse,
-        contentData: multiToolData
+        contentData: multiToolData,
+        processingTime: 'N/A',  // Will be calculated later
+        toolSelectionProvider: 'groq',  // Always groq for tool selection
+        responseProvider: query.responseProvider || 'groq'
       };
 
     } catch (error: any) {
@@ -239,41 +250,90 @@ Return ONLY a JSON array of tool names, like: ["get_all_content_types", "get_all
 
   /**
    * Generate enhanced AI response using multiple data sources
+   * Strategy: Groq for tool selection, user's chosen provider for response generation
    */
   private static async generateEnhancedAIResponse(
     userQuery: string,
     multiToolData: any,
-    tenantId: string
+    tenantId: string,
+    responseProvider: string = 'groq',
+    responseModel: string = 'llama-3.3-70b-versatile'
   ): Promise<string> {
     
-    let systemContext = `You are a knowledgeable ContentStack expert helping analyze website content and structure. `;
+    // Enhanced system context optimized for different LLM providers
+    let systemContext = `You are an expert ContentStack CMS analyst. You have been provided with LIVE CONTENT DATA from a ContentStack-powered website. Your job is to analyze this data and answer user questions about the website's content, structure, and information.
+
+IMPORTANT: The data provided below is the ACTUAL CONTENT from the website you're analyzing. This is NOT generic information - it's the real, live content from the user's website.
+
+CONTEXT: You are analyzing a ContentStack-powered website. The user is asking questions about this specific website's content.`;
     
     // Build comprehensive context from multiple tool results
     const contextParts: string[] = [];
     
     for (const [toolName, result] of Object.entries(multiToolData)) {
       if (result && (result as any).success && (result as any).data) {
-        contextParts.push(`\n=== ${toolName.replace(/_/g, ' ').toUpperCase()} ===\n${JSON.stringify((result as any).data, null, 2)}`);
+        // Parse the content to make it more readable for LLMs
+        let dataContent = (result as any).data;
+        if (dataContent.content && Array.isArray(dataContent.content)) {
+          try {
+            // Try to parse the nested JSON text content
+            const parsedContent = dataContent.content.map((item: any) => {
+              if (item.type === 'text' && item.text) {
+                try {
+                  return JSON.parse(item.text);
+                } catch {
+                  return item.text;
+                }
+              }
+              return item;
+            });
+            dataContent = parsedContent[0] || dataContent;
+          } catch (e) {
+            // Keep original if parsing fails
+          }
+        }
+        
+        contextParts.push(`\n=== ${toolName.replace(/_/g, ' ').toUpperCase()} DATA ===\n${JSON.stringify(dataContent, null, 2)}`);
       } else if (result && (result as any).error) {
         contextParts.push(`\n=== ${toolName.replace(/_/g, ' ').toUpperCase()} (ERROR) ===\n${(result as any).error}`);
       }
     }
 
     if (contextParts.length > 0) {
-      systemContext += `\n\nContentStack Data:${contextParts.join('\n')}`;
+      systemContext += `\n\n📊 WEBSITE CONTENT DATA:${contextParts.join('\n')}`;
     } else {
-      systemContext += `\n\nNote: No ContentStack data was available for this query.`;
+      systemContext += `\n\n⚠️ No ContentStack data was available for this query.`;
     }
 
-    systemContext += `\n\nPlease provide a comprehensive, helpful response about the website based on the available ContentStack data. Be specific and reference the actual content when possible.`;
+    systemContext += `\n\n🎯 INSTRUCTIONS:
+- Analyze the ACTUAL content data provided above (this is real website content, not examples)
+- Answer the user's question using the specific information from this website
+- Be specific and reference exact content, links, images, or data found in the content
+- If looking for links, search through the HTML content in the data
+- If the user asks about website content, they're referring to THIS website whose data is provided above
+
+Please provide a comprehensive, helpful response based on the actual ContentStack data provided.`;
 
     try {
-      const result = await groq.sendToGroq([
-        { role: 'system', content: systemContext },
-        { role: 'user', content: userQuery }
-      ], 'llama-3.3-70b-versatile');
+      // Use user's chosen LLM provider for response generation
+      console.log(`🎯 Generating response with ${responseProvider}:${responseModel}`);
+      
+      const messages: CleanMessage[] = [
+        { role: 'system' as const, content: systemContext },
+        { role: 'user' as const, content: userQuery }
+      ];
 
-      return result.content || 'I apologize, but I couldn\'t generate a response based on the available data.';
+      const result = await llm.sendMessageWithFallback(
+        messages,
+        responseProvider,
+        responseModel
+      );
+
+      if (result.success) {
+        return result.content || 'I apologize, but I couldn\'t generate a response based on the available data.';
+      } else {
+        throw new Error(`LLM response failed: ${result.error}`);
+      }
     } catch (error) {
       console.error('Enhanced AI response generation failed:', error);
       // Fallback to basic response with raw data

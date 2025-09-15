@@ -11,14 +11,8 @@ const router = Router();
 // Health check
 router.get('/health', ContentStackAIController.healthCheck);
 
-// Natural language content queries
+// Enhanced natural language content queries with dual LLM strategy
 router.post('/query', ContentStackAIController.processQuery);
-
-// Get available content types
-router.post('/content-types', ContentStackAIController.getContentTypes);
-
-// Create content with AI assistance
-router.post('/create-content', ContentStackAIController.createContent);
 
 // Instance management (monitoring/debugging)
 router.get('/instances', ContentStackAIController.getActiveInstances);

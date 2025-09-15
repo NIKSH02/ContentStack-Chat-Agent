@@ -31,17 +31,28 @@ export function getGeminiModels(): string[] {
 // Convert messages to Gemini format
 function formatMessagesForGemini(messages: CleanMessage[]): GeminiContent[] {
   const contents: GeminiContent[] = [];
+  let systemMessage = '';
   
+  // Extract system message
   for (const message of messages) {
     if (message.role === 'system') {
-      // Gemini doesn't have system role, prepend to first user message
+      systemMessage = message.content;
       continue;
     }
     
-    contents.push({
-      role: message.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: message.content }]
-    });
+    // For first user message, prepend system context
+    if (message.role === 'user' && systemMessage && contents.length === 0) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: `${systemMessage}\n\nUser Query: ${message.content}` }]
+      });
+      systemMessage = ''; // Clear it after using
+    } else {
+      contents.push({
+        role: message.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: message.content }]
+      });
+    }
   }
   
   return contents;
