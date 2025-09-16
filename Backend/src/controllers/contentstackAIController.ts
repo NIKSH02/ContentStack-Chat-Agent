@@ -10,6 +10,7 @@ export interface ContentStackQueryRequest extends Request {
     context?: string;
     provider?: string;  // LLM provider for response generation
     model?: string;     // LLM model for response generation
+    sessionId?: string; // Session ID for conversation memory
   };
 }
 
@@ -27,7 +28,7 @@ export class ContentStackAIController {
    */
   static async processQuery(req: ContentStackQueryRequest, res: Response): Promise<void> {
     try {
-      const { query, tenantId, apiKey, projectId, context, provider, model } = req.body;
+      const { query, tenantId, apiKey, projectId, context, provider, model, sessionId } = req.body;
 
       // Validate required fields
       if (!query || !tenantId || !apiKey) {
@@ -46,12 +47,14 @@ export class ContentStackAIController {
         projectId,
         context,
         responseProvider: provider || 'groq',  // User's LLM choice for response generation
-        responseModel: model || 'llama-3.3-70b-versatile'  // User's model choice
+        responseModel: model || 'llama-3.3-70b-versatile',  // User's model choice
+        sessionId
       };
 
       console.log(`🚀 Processing ContentStack query for tenant: ${tenantId}`);
       console.log(`🔍 Query: "${query}"`);
       console.log(`🤖 Tool Selection: Groq (fixed) | Response Generation: ${queryData.responseProvider}:${queryData.responseModel}`);
+      console.log(`🧠 Session ID: ${sessionId || 'not provided'}`);
       
       const result: ContentStackResponse = await ContentStackAIService.processContentQuery(queryData);
       
@@ -154,7 +157,7 @@ export class ContentStackAIController {
    */
   static async processQueryStream(req: ContentStackQueryRequest, res: Response): Promise<void> {
     try {
-      const { query, tenantId, apiKey, projectId, context, provider, model } = req.body;
+      const { query, tenantId, apiKey, projectId, context, provider, model, sessionId } = req.body;
 
       // Validation
       if (!query || !tenantId || !apiKey) {
@@ -175,6 +178,7 @@ export class ContentStackAIController {
       console.log(`🚀 Processing streaming ContentStack query for tenant: ${tenantId}`);
       console.log(`🔍 Query: "${query}"`);
       console.log(`🤖 Streaming with: ${provider || 'groq'}:${model || 'llama-3.3-70b-versatile'}`);
+      console.log(`🧠 Session ID: ${sessionId || 'not provided'}`);
 
       const queryData: ContentStackQuery = {
         query,
@@ -183,7 +187,8 @@ export class ContentStackAIController {
         projectId,
         context,
         responseProvider: provider || 'groq',
-        responseModel: model || 'llama-3.3-70b-versatile'
+        responseModel: model || 'llama-3.3-70b-versatile',
+        sessionId
       };
 
       // Send initial event

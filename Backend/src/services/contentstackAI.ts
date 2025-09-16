@@ -2,6 +2,7 @@ import { ContentStackMCPService, contentStackMCPManager } from './contentstackMC
 import * as groq from './llm/groq';
 import * as llm from './llm';  // Full LLM service for user provider choice
 import { CleanMessage, LLMResult } from '../types';
+import { conversationMemory, ConversationMessage } from './conversationMemory';
 
 export interface ContentStackQuery {
   query: string;
@@ -11,6 +12,7 @@ export interface ContentStackQuery {
   context?: string;
   responseProvider?: string;  // LLM provider for response generation (user choice)
   responseModel?: string;     // LLM model for response generation (user choice)
+  sessionId?: string;         // Session ID for conversation memory
 }
 
 export interface ContentStackResponse {
@@ -77,14 +79,25 @@ export class ContentStackAIService {
         };
       }
 
-      // Step 6: Generate comprehensive AI response using user's chosen LLM provider
+      // Step 6: Add user message to conversation memory
+      if (query.sessionId) {
+        conversationMemory.addMessage(query.sessionId, query.tenantId, 'user', query.query);
+      }
+
+      // Step 7: Generate comprehensive AI response using user's chosen LLM provider with conversation history
       const enhancedResponse = await this.generateEnhancedAIResponse(
         query.query,
         multiToolData,
         query.tenantId,
         query.responseProvider || 'groq',  // Default to groq if not specified
-        query.responseModel || 'llama-3.1-8b-instant'  // Default model
+        query.responseModel || 'llama-3.1-8b-instant',  // Default model
+        query.sessionId  // Pass session ID for conversation history
       );
+
+      // Step 8: Add assistant response to conversation memory
+      if (query.sessionId) {
+        conversationMemory.addMessage(query.sessionId, query.tenantId, 'assistant', enhancedResponse);
+      }
 
       return {
         success: true,
@@ -154,15 +167,31 @@ export class ContentStackAIService {
         };
       }
 
-      // Step 6: Generate streaming AI response using user's chosen LLM provider
+      // Step 6: Add user message to conversation memory
+      if (query.sessionId) {
+        conversationMemory.addMessage(query.sessionId, query.tenantId, 'user', query.query);
+      }
+
+      // Step 7: Generate streaming AI response using user's chosen LLM provider
+      let assistantResponse = '';
+      
       await this.generateEnhancedAIResponseStream(
         query.query,
         multiToolData,
         query.tenantId,
-        onChunk,
+        (chunk: string) => {
+          assistantResponse += chunk;
+          onChunk(chunk);
+        },
         query.responseProvider || 'groq',
-        query.responseModel || 'llama-3.1-8b-instant'
+        query.responseModel || 'llama-3.1-8b-instant',
+        query.sessionId
       );
+
+      // Step 8: Add complete assistant response to conversation memory
+      if (query.sessionId && assistantResponse) {
+        conversationMemory.addMessage(query.sessionId, query.tenantId, 'assistant', assistantResponse);
+      }
 
     } catch (error: any) {
       console.error('ContentStack streaming service error:', error);
@@ -332,7 +361,8 @@ Return ONLY a JSON array of tool names: ["tool1", "tool2", "tool3"]`;
     multiToolData: any,
     tenantId: string,
     responseProvider: string = 'groq',
-    responseModel: string = 'llama-3.3-70b-versatile'
+    responseModel: string = 'llama-3.3-70b-versatile',
+    sessionId?: string
   ): Promise<string> {
     
     // Enhanced system context optimized for production website assistance
@@ -419,10 +449,26 @@ You have access to real, live content from this website. Use this data to provid
       // Use user's chosen LLM provider for response generation
       console.log(`🎯 Generating response with ${responseProvider}:${responseModel}`);
       
+      // Build messages array with conversation history
       const messages: CleanMessage[] = [
-        { role: 'system' as const, content: systemContext },
-        { role: 'user' as const, content: userQuery }
+        { role: 'system' as const, content: systemContext }
       ];
+
+      // Add conversation history if session exists
+      if (sessionId) {
+        const conversationHistory = conversationMemory.getFormattedConversation(sessionId, 8); // Last 8 messages for context
+        console.log(`💭 Including ${conversationHistory.length} previous messages for context`);
+        
+        conversationHistory.forEach(msg => {
+          messages.push({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content
+          });
+        });
+      }
+
+      // Add current user query
+      messages.push({ role: 'user' as const, content: userQuery });
 
       const result = await llm.sendMessageWithFallback(
         messages,
@@ -451,7 +497,8 @@ You have access to real, live content from this website. Use this data to provid
     tenantId: string,
     onChunk: (chunk: string) => void,
     responseProvider: string = 'groq',
-    responseModel?: string
+    responseModel?: string,
+    sessionId?: string
   ): Promise<void> {
     
     // Same enhanced system context as non-streaming version
@@ -535,10 +582,26 @@ You have access to real, live content from this website. Use this data to provid
     try {
       console.log(`🎯 Generating streaming response with ${responseProvider}:${responseModel}`);
       
+      // Build messages array with conversation history
       const messages: CleanMessage[] = [
-        { role: 'system' as const, content: systemContext },
-        { role: 'user' as const, content: userQuery }
+        { role: 'system' as const, content: systemContext }
       ];
+
+      // Add conversation history if session exists
+      if (sessionId) {
+        const conversationHistory = conversationMemory.getFormattedConversation(sessionId, 8); // Last 8 messages for context
+        console.log(`💭 Including ${conversationHistory.length} previous messages for streaming context`);
+        
+        conversationHistory.forEach(msg => {
+          messages.push({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content
+          });
+        });
+      }
+
+      // Add current user query
+      messages.push({ role: 'user' as const, content: userQuery });
 
       // Use streaming with fallback support
       await llm.sendMessageStreamWithFallback(
