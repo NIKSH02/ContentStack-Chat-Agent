@@ -59,8 +59,6 @@ class ContentStackOAuthService {
 
   constructor() {
     this.clientId = process.env.CONTENTSTACK_CLIENT_ID!;
-    console.log(process.env.CONTENTSTACK_CLIENT_SECRET);
-    console.log(process.env.CONTENTSTACK_CLIENT_ID);
     this.clientSecret = process.env.CONTENTSTACK_CLIENT_SECRET!;
     this.redirectUri = process.env.CONTENTSTACK_REDIRECT_URI!;
     this.baseUrl = process.env.CONTENTSTACK_BASE_URL || 'https://eu-app.contentstack.com';

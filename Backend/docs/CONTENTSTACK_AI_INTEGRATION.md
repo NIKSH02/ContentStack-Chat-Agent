@@ -131,12 +131,7 @@ Request Body:
 }
 ```
 
-#### 5. Monitor Active MCP Instances
-```http
-GET /api/contentstack/instances
-```
-
-#### 6. Cleanup MCP Instances
+#### 5. Cleanup MCP Instances
 ```http
 POST /api/contentstack/cleanup
 ```
@@ -255,19 +250,8 @@ The service provides robust error handling:
 
 ## 📊 Monitoring and Debugging
 
-### Active Instance Monitoring
-```http
-GET /api/contentstack/instances
-```
-
-Returns:
-```json
-{
-  "success": true,
-  "activeInstances": [
-    {
-      "tenantId": "tenant-001",
-      "connected": true,
+### Debug and Troubleshooting
+The system provides built-in logging and error handling for monitoring MCP instance health and performance.
       "pid": 12345
     }
   ],

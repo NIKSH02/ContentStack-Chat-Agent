@@ -1,31 +1,6 @@
 // Load environment variables FIRST before any other imports
 import dotenv from 'dotenv';
-import path from 'path';
-
-// Configure dotenv with multiple fallback paths
-const envPath1 = path.resolve(__dirname, '../.env');
-const envPath2 = path.resolve(process.cwd(), '.env');
-const envPath3 = path.resolve(__dirname, '../../.env');
-
-console.log('Trying env paths:');
-console.log('1:', envPath1);
-console.log('2:', envPath2);
-console.log('3:', envPath3);
-
-// Try multiple paths
-const result1 = dotenv.config({ path: envPath1 });
-if (result1.error) {
-  console.log('Path 1 failed, trying path 2');
-  const result2 = dotenv.config({ path: envPath2 });
-  if (result2.error) {
-    console.log('Path 2 failed, trying path 3');
-    const result3 = dotenv.config({ path: envPath3 });
-    if (result3.error) {
-      console.log('All paths failed, using default');
-      dotenv.config();
-    }
-  }
-}
+dotenv.config();
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
@@ -35,19 +10,12 @@ import rateLimit from 'express-rate-limit';
 
 import connectDB from './utils/database';
 import * as llm from './services/llm';
-import { authenticateTenant, authenticateToken, optionalAuth } from './middleware/auth';
-import apiRoutes from './routes';
 
-// Load environment variables with explicit path
-console.log('Current working directory:', process.cwd());
-console.log('__dirname:', __dirname);
+import apiRoutes from './routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-    console.log("server page ",process.env.CONTENTSTACK_CLIENT_SECRET);
-    console.log("server page ", process.env.CONTENTSTACK_CLIENT_ID);
-    console.log("server page ", process.env.GROQ_API_KEY);
-    console.log("server page ", process.env.PORT);
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -89,7 +57,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // System status endpoint
-app.get('/status', optionalAuth, (req: Request, res: Response) => {
+app.get('/status', (req: Request, res: Response) => {
   res.json({
     success: true,
     data: {
@@ -100,7 +68,7 @@ app.get('/status', optionalAuth, (req: Request, res: Response) => {
         version: '2.0.0'
       },
       database: {
-        status: 'connected' // TODO: Add actual DB status check
+        status: 'connected' 
       },
       llm: {
         providers: llm.getAvailableProviders().length,
@@ -138,7 +106,7 @@ app.get('/api/llm/providers', (req: Request, res: Response) => {
 app.use('/api', apiRoutes);
 
 // Chat endpoint with tenant authentication (legacy - kept for backwards compatibility)
-app.post('/api/chat', optionalAuth, async (req: Request, res: Response) => {
+app.post('/api/chat', async (req: Request, res: Response) => {
   try {
     const { message, provider, model, settings } = req.body;
     
@@ -173,11 +141,11 @@ app.post('/api/chat', optionalAuth, async (req: Request, res: Response) => {
       tenant.usage.totalRequests += 1;
       tenant.usage.lastRequestAt = new Date();
       await tenant.save();
-    } else if (req.user) {
+    } else if (req) {
       // Use JWT authentication - create a default tenant-like object
       tenant = {
         id: 'jwt-user',
-        name: req.user.email || 'JWT User',
+        name: 'JWT User',
         settings: {
           defaultProvider: 'groq',
           defaultModel: 'llama-3.1-8b-instant',
@@ -246,7 +214,7 @@ app.post('/api/chat', optionalAuth, async (req: Request, res: Response) => {
 });
 
 // Test LLM providers endpoint (requires authentication)
-app.post('/api/llm/test', authenticateToken, async (req: Request, res: Response) => {
+app.post('/api/llm/test', async (req: Request, res: Response) => {
   try {
     console.log('Testing all LLM providers...');
     const results = await llm.testAllProviders();

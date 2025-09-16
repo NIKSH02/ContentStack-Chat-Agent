@@ -41,24 +41,20 @@ async function testContentStackAI() {
   console.log();
 
   try {
-    console.log('🚀 Starting ContentStack AI query...');
+    console.log('🚀 Starting ContentStack AI streaming query...');
     
     const startTime = Date.now();
-    const result = await ContentStackAIService.processContentQuery(testConfig);
+    let response = '';
+    
+    await ContentStackAIService.processContentQueryStream(testConfig, (chunk: string) => {
+      response += chunk;
+      process.stdout.write(chunk);
+    });
+    
     const duration = Date.now() - startTime;
-    
-    console.log(`✅ Query completed in ${duration}ms\n`);
-    
-    if (result.success) {
-      console.log('📊 Success Response:');
-      console.log(`  Response: ${result.response}`);
-      if (result.contentData) {
-        console.log(`  Content Data: ${JSON.stringify(result.contentData, null, 2)}`);
-      }
-    } else {
-      console.log('❌ Error Response:');
-      console.log(`  Error: ${result.error}`);
-    }
+    console.log(`\n\n✅ Query completed in ${duration}ms\n`);
+    console.log('📊 Complete Response:');
+    console.log(`  Response: ${response}`);
     
   } catch (error: any) {
     console.error('💥 Test failed with exception:');

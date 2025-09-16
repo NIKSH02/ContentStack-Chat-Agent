@@ -1,14 +1,10 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth';
 import {
   initiateOAuth,
   handleCallback,
-  connectTenant,
   getUserProjects,
   getStackTokens,
   refreshAccessToken,
-  disconnectTenant,
-  getConnectionStatus,
   clearOAuthCache
 } from '../controllers/oauthController';
 
@@ -55,28 +51,5 @@ router.get('/contentstack/stacks/:stackApiKey/tokens', getStackTokens);
  * @access  Public (requires refresh_token in body)
  */
 router.post('/contentstack/refresh', refreshAccessToken);
-
-// Protected routes (require JWT authentication)
-
-/**
- * @route   POST /oauth/contentstack/connect/:tenantId
- * @desc    Connect ContentStack to a tenant
- * @access  Private (requires JWT token)
- */
-router.post('/contentstack/connect/:tenantId', authenticateToken, connectTenant);
-
-/**
- * @route   DELETE /oauth/contentstack/disconnect/:tenantId
- * @desc    Disconnect ContentStack from a tenant
- * @access  Private (requires JWT token)
- */
-router.delete('/contentstack/disconnect/:tenantId', authenticateToken, disconnectTenant);
-
-/**
- * @route   GET /oauth/contentstack/status/:tenantId
- * @desc    Get ContentStack connection status for a tenant
- * @access  Private (requires JWT token)
- */
-router.get('/contentstack/status/:tenantId', authenticateToken, getConnectionStatus);
 
 export default router;
