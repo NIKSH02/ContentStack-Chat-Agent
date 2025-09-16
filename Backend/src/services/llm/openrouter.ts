@@ -86,6 +86,42 @@ export async function sendToOpenRouter(
   }
 }
 
+// Send streaming chat message to OpenRouter
+export async function sendToOpenRouterStream(
+  messages: CleanMessage[], 
+  model: string = 'openai/gpt-oss-20b:free',
+  onChunk: (chunk: string) => void
+): Promise<void> {
+  if (!process.env.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY not configured');
+  }
+
+  try {
+    const client = createOpenRouterClient();
+    
+    const stream = await client.chat.completions.create({
+      model,
+      messages: messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 2048,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        onChunk(content);
+      }
+    }
+  } catch (error: any) {
+    console.error('OpenRouter streaming error:', error);
+    throw new Error(`OpenRouter streaming failed: ${error.message}`);
+  }
+}
+
 // Test OpenRouter connection
 export async function testOpenRouter(): Promise<LLMResult> {
   const testMessages: CleanMessage[] = [

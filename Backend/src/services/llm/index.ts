@@ -59,6 +59,66 @@ export async function sendMessage(provider: string, messages: CleanMessage[], mo
   }
 }
 
+// Send streaming message to specific provider
+export async function sendMessageStream(
+  provider: string, 
+  messages: CleanMessage[], 
+  onChunk: (chunk: string) => void,
+  model?: string
+): Promise<void> {
+  switch (provider) {
+    case 'groq':
+      const { sendToGroqStream } = await import('./groq');
+      return await sendToGroqStream(messages, model, onChunk);
+    case 'gemini':
+      const { sendToGeminiStream } = await import('./gemini');
+      return await sendToGeminiStream(messages, model, onChunk);
+    case 'openrouter':
+      const { sendToOpenRouterStream } = await import('./openrouter');
+      return await sendToOpenRouterStream(messages, model, onChunk);
+    default:
+      throw new Error(`Streaming not supported for provider '${provider}'`);
+  }
+}
+
+// Send streaming message with fallback to other providers
+export async function sendMessageStreamWithFallback(
+  messages: CleanMessage[],
+  onChunk: (chunk: string) => void,
+  preferredProvider?: string,
+  model?: string
+): Promise<void> {
+  const providers = getAvailableProviders();
+  
+  if (providers.length === 0) {
+    throw new Error('No LLM providers available');
+  }
+  
+  // Try preferred provider first
+  if (preferredProvider) {
+    try {
+      await sendMessageStream(preferredProvider, messages, onChunk, model);
+      return; // Success
+    } catch (error: any) {
+      console.log(`Streaming provider ${preferredProvider} failed, trying fallback...`, error.message);
+    }
+  }
+  
+  // Try other providers
+  for (const provider of providers) {
+    if (provider.name === preferredProvider) continue; // Already tried
+    
+    try {
+      await sendMessageStream(provider.name, messages, onChunk, model);
+      return; // Success
+    } catch (error: any) {
+      console.log(`Streaming provider ${provider.name} failed:`, error.message);
+    }
+  }
+  
+  throw new Error('All streaming providers failed');
+}
+
 // Send message with fallback to other providers
 export async function sendMessageWithFallback(
   messages: CleanMessage[], 

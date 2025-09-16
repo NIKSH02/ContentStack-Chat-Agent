@@ -83,7 +83,7 @@ export class ContentStackAIService {
         multiToolData,
         query.tenantId,
         query.responseProvider || 'groq',  // Default to groq if not specified
-        query.responseModel || 'llama-3.3-70b-versatile'  // Default model
+        query.responseModel || 'llama-3.1-8b-instant'  // Default model
       );
 
       return {
@@ -102,6 +102,71 @@ export class ContentStackAIService {
         response: 'I encountered an error while processing your request. Please try again.',
         error: 'Service temporarily unavailable' // Generic error, never expose internal details
       };
+    }
+  }
+
+  /**
+   * Process a natural language query about ContentStack content with streaming response
+   */
+  static async processContentQueryStream(
+    query: ContentStackQuery, 
+    onChunk: (chunk: string) => void
+  ): Promise<void> {
+    try {
+      console.log(`Processing ContentStack streaming query: ${query.query}`);
+
+      // Step 1: Get or create MCP instance
+      const mcpConfig = {
+        apiKey: query.apiKey,
+        projectId: query.projectId,
+        groups: 'cma' as 'launch' | 'cma' | 'both',
+        region: 'EU'
+      };
+
+      const mcpService = contentStackMCPManager.getInstance(query.tenantId, mcpConfig);
+
+      // Step 2: Start MCP server if not connected
+      if (!mcpService.isServerConnected()) {
+        await mcpService.startMCPServer();
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      // Step 3: Get available tools for intelligent selection
+      const toolsResult = await mcpService.listAvailableTools();
+      if (!toolsResult.success) {
+        onChunk('I apologize, but I\'m unable to access the content tools right now. Please try again later.');
+        return;
+      }
+
+      // Step 4: Enhanced LLM-driven tool selection
+      const selectedTools = await this.selectToolsWithLLM(query.query, toolsResult.data.tools);
+      console.log(`🤖 LLM selected ${selectedTools.length} tools:`, selectedTools.map(t => t.name));
+
+      // Step 5: Execute selected tools and gather comprehensive data
+      let multiToolData;
+      try {
+        multiToolData = await this.executeSelectedTools(selectedTools);
+        console.log(`📊 Executed tools, results:`, Object.keys(multiToolData));
+      } catch (error: any) {
+        console.warn('Multi-tool execution failed, using fallback:', error.message);
+        multiToolData = {
+          'get_all_content_types': await mcpService.getContentTypes()
+        };
+      }
+
+      // Step 6: Generate streaming AI response using user's chosen LLM provider
+      await this.generateEnhancedAIResponseStream(
+        query.query,
+        multiToolData,
+        query.tenantId,
+        onChunk,
+        query.responseProvider || 'groq',
+        query.responseModel || 'llama-3.1-8b-instant'
+      );
+
+    } catch (error: any) {
+      console.error('ContentStack streaming service error:', error);
+      onChunk('I encountered an error while processing your request. Please try again.');
     }
   }
 
@@ -374,6 +439,118 @@ You have access to real, live content from this website. Use this data to provid
       console.error('Enhanced AI response generation failed:', error);
       // NEVER expose raw data to end users - provide a clean, professional error message
       return `I apologize, but I'm having trouble processing your request right now. Please try asking your question in a different way, or contact our support team if you need immediate assistance.`;
+    }
+  }
+
+  /**
+   * Generate streaming AI response using user's chosen LLM provider with ContentStack context
+   */
+  private static async generateEnhancedAIResponseStream(
+    userQuery: string,
+    multiToolData: any,
+    tenantId: string,
+    onChunk: (chunk: string) => void,
+    responseProvider: string = 'groq',
+    responseModel?: string
+  ): Promise<void> {
+    
+    // Same enhanced system context as non-streaming version
+    let systemContext = `You are a helpful AI assistant for this website. Your role is to help visitors find information and answer questions using only the actual content and data from this website.
+
+🔒 GUARDRAILS:
+- ONLY use information from the provided website content data
+- NEVER invent, assume, or hallucinate information not present in the data
+- If information is not available in the provided data, clearly state this limitation
+- Do not make up product details, prices, availability, or contact information
+- Always base your responses on factual content from the website
+- Do NOT discuss ContentStack, CMS, or technical backend details
+- Focus ONLY on the website's actual content, products, services, or information
+
+🎯 YOUR MISSION:
+You have access to real, live content from this website. Use this data to provide accurate, helpful responses about what's available on this website - not about the technology behind it.`;
+    
+    // Build comprehensive context from multiple tool results
+    const contextParts: string[] = [];
+    
+    for (const [toolName, result] of Object.entries(multiToolData)) {
+      if (result && (result as any).success && (result as any).data) {
+        let dataContent = (result as any).data;
+        if (dataContent.content && Array.isArray(dataContent.content)) {
+          try {
+            const parsedContent = dataContent.content.map((item: any) => {
+              if (item.type === 'text' && item.text) {
+                try {
+                  return JSON.parse(item.text);
+                } catch {
+                  return item.text;
+                }
+              }
+              return item;
+            });
+            dataContent = parsedContent[0] || dataContent;
+          } catch (e) {
+            // Keep original if parsing fails
+          }
+        }
+        
+        contextParts.push(`\n=== ${toolName.replace(/_/g, ' ').toUpperCase()} DATA ===\n${JSON.stringify(dataContent, null, 2)}`);
+      } else if (result && (result as any).error) {
+        contextParts.push(`\n=== ${toolName.replace(/_/g, ' ').toUpperCase()} (ERROR) ===\n${(result as any).error}`);
+      }
+    }
+
+    if (contextParts.length > 0) {
+      systemContext += `\n\n📊 WEBSITE CONTENT DATA:${contextParts.join('\n')}`;
+    } else {
+      systemContext += `\n\n⚠️ IMPORTANT: No specific website content data is currently available for this query. 
+      
+🚫 Since you don't have access to the actual website content, you should:
+- Inform the user that you need more specific information to help them with this website
+- Suggest they try asking about different topics or sections of the website
+- Do NOT mention ContentStack, CMS, or technical details
+- Focus on helping them find information that might be available on the website`;
+    }
+
+    systemContext += `\n\n📋 RESPONSE GUIDELINES:
+- Provide concise, accurate answers based EXCLUSIVELY on the website content above
+- Talk about the website's content, products, services, or information - NOT about ContentStack or CMS
+- If asked about anything not related to this website's content, politely redirect: "I'm here to help with information about this website. What would you like to know about our content?"
+- Reference specific details, links, or information found in the actual website data
+- If asked about products, services, or content not in the data, say "I don't have that information available on this website"
+- Keep responses conversational but professional - you're representing this website
+- For general questions (math, weather, etc.), say: "I can only help with questions about this website's content"
+
+⚠️ CRITICAL: Never mention ContentStack, CMS, or technical details. Focus only on the website's actual content and services. Never guess, assume or create information.
+
+📝 RESPONSE FORMATTING GUIDELINES:
+- Use markdown formatting for better readability
+- Structure information with headings (## for main topics, ### for subtopics)
+- Use bullet points (-) for lists of items
+- Use **bold** for important information or key terms
+- Format links as [text](url) when available in the content
+- Use numbered lists (1. 2. 3.) for step-by-step instructions
+- Keep responses well-organized and scannable
+- Use line breaks to separate different topics or sections`;
+
+    try {
+      console.log(`🎯 Generating streaming response with ${responseProvider}:${responseModel}`);
+      
+      const messages: CleanMessage[] = [
+        { role: 'system' as const, content: systemContext },
+        { role: 'user' as const, content: userQuery }
+      ];
+
+      // Use streaming with fallback support
+      await llm.sendMessageStreamWithFallback(
+        messages,
+        onChunk,
+        responseProvider,
+        responseModel
+      );
+
+    } catch (error) {
+      console.error('Enhanced AI streaming response generation failed:', error);
+      onChunk('I apologize, but I\'m having trouble processing your request right now. Please try asking your question in a different way, or contact our support team if you need immediate assistance.');
     }
   }
 

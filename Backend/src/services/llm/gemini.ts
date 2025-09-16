@@ -101,6 +101,79 @@ export async function sendToGemini(messages: CleanMessage[], model: string = 'ge
   }
 }
 
+// Send streaming chat message to Gemini
+export async function sendToGeminiStream(
+  messages: CleanMessage[], 
+  model: string = 'gemini-1.5-flash',
+  onChunk: (chunk: string) => void
+): Promise<void> {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY not configured');
+  }
+
+  try {
+    const contents = formatMessagesForGemini(messages);
+    
+    const response = await fetch(
+      `${GEMINI_BASE_URL}/models/${model}:streamGenerateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents,
+          generationConfig: {
+            maxOutputTokens: 1000,
+            temperature: 0.7,
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('Failed to get response reader');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.trim()) {
+          try {
+            const parsed = JSON.parse(line);
+            const content = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (content) {
+              onChunk(content);
+            }
+          } catch (e) {
+            // Skip invalid JSON
+            continue;
+          }
+        }
+      }
+    }
+  } catch (error: any) {
+    console.error('Gemini streaming error:', error);
+    throw new Error(`Gemini streaming failed: ${error.message}`);
+  }
+}
+
 // Test Gemini connection
 export async function testGemini(): Promise<LLMResult> {
   const testMessages: CleanMessage[] = [

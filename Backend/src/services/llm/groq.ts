@@ -6,6 +6,9 @@ const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 
 const GROQ_MODELS = [
   'llama-3.1-8b-instant',
+  'llama-3.1-70b-versatile',
+  'llama-3.3-70b-versatile',
+  'mixtral-8x7b-32768',
   'gemma2-9b-it'
 ];
 
@@ -62,6 +65,81 @@ export async function sendToGroq(messages: CleanMessage[], model: string = 'llam
       error: error.response?.data?.error?.message || error.message,
       provider: 'groq'
     };
+  }
+}
+
+// Send streaming chat message to Groq
+export async function sendToGroqStream(
+  messages: CleanMessage[], 
+  model: string = 'llama-3.1-8b-instant',
+  onChunk: (chunk: string) => void
+): Promise<void> {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY not configured');
+  }
+
+  try {
+    const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 2048,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('Failed to get response reader');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          
+          if (data === '[DONE]') {
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            
+            if (content) {
+              onChunk(content);
+            }
+          } catch (e) {
+            // Skip invalid JSON
+            continue;
+          }
+        }
+      }
+    }
+  } catch (error: any) {
+    console.error('Groq streaming error:', error);
+    throw new Error(`Groq streaming failed: ${error.message}`);
   }
 }
 

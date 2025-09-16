@@ -149,6 +149,78 @@ export class ContentStackAIController {
   }
 
   /**
+   * Process natural language queries with streaming response
+   * POST /api/contentstack/query-stream
+   */
+  static async processQueryStream(req: ContentStackQueryRequest, res: Response): Promise<void> {
+    try {
+      const { query, tenantId, apiKey, projectId, context, provider, model } = req.body;
+
+      // Validation
+      if (!query || !tenantId || !apiKey) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required fields: query, tenantId, and apiKey are required'
+        });
+        return;
+      }
+
+      // Set up Server-Sent Events headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+      console.log(`🚀 Processing streaming ContentStack query for tenant: ${tenantId}`);
+      console.log(`🔍 Query: "${query}"`);
+      console.log(`🤖 Streaming with: ${provider || 'groq'}:${model || 'llama-3.3-70b-versatile'}`);
+
+      const queryData: ContentStackQuery = {
+        query,
+        tenantId,
+        apiKey,
+        projectId,
+        context,
+        responseProvider: provider || 'groq',
+        responseModel: model || 'llama-3.3-70b-versatile'
+      };
+
+      // Send initial event
+      res.write(`data: ${JSON.stringify({
+        type: 'start',
+        message: 'Processing your request...'
+      })}\n\n`);
+
+      // Process the query with streaming
+      await ContentStackAIService.processContentQueryStream(queryData, (chunk) => {
+        // Send each chunk as it arrives
+        res.write(`data: ${JSON.stringify({
+          chunk: chunk
+        })}\n\n`);
+      });
+
+      // Send completion event
+      res.write(`data: ${JSON.stringify({
+        type: 'complete'
+      })}\n\n`);
+
+      res.end();
+
+    } catch (error: any) {
+      console.error('ContentStack AI Streaming Controller error:', error);
+      
+      // Send error event
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: 'I apologize, but I encountered an error while processing your request. Please try again.'
+      })}\n\n`);
+      
+      res.end();
+    }
+  }
+
+  /**
    * Cleanup MCP instances (for maintenance)
    * POST /api/contentstack/cleanup
    */
