@@ -10,7 +10,6 @@ const GEMINI_MODELS = [
   'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
   'gemini-2.5-pro',     // some error need to fix after wards
-  'gemini-pro'
 ];
 
 interface GeminiContent {
@@ -85,6 +84,10 @@ export async function sendToGemini(messages: CleanMessage[], model: string = 'ge
 
     const content = response.data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
 
+    if (!content || content === 'No response') {
+      console.warn('⚠️ Empty or no content from Gemini:', response.data);
+    }
+
     return {
       success: true,
       content,
@@ -143,6 +146,7 @@ export async function sendToGeminiStream(
     const decoder = new TextDecoder();
     let buffer = '';
 
+
     while (true) {
       const { done, value } = await reader.read();
       
@@ -160,6 +164,8 @@ export async function sendToGeminiStream(
             
             if (content) {
               onChunk(content);
+            } else {
+              console.warn('⚠️ No content in Gemini response chunk:', parsed);
             }
           } catch (e) {
             // Skip invalid JSON

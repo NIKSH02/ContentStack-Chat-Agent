@@ -99,13 +99,22 @@ export class ContentStackAIController {
         message: 'Processing your request...'
       })}\n\n`);
 
-      // Process the query with streaming
-      await ContentStackAIService.processContentQueryStream(queryData, (chunk) => {
-        // Send each chunk as it arrives
-        res.write(`data: ${JSON.stringify({
-          chunk: chunk
-        })}\n\n`);
-      });
+      // Process the query with streaming and status updates
+      await ContentStackAIService.processContentQueryStreamWithStatus(queryData, 
+        (chunk: string) => {
+          // Send each chunk as it arrives
+          res.write(`data: ${JSON.stringify({
+            chunk: chunk
+          })}\n\n`);
+        },
+        (status: string) => {
+          // Send status updates during processing
+          res.write(`data: ${JSON.stringify({
+            type: 'status',
+            message: status
+          })}\n\n`);
+        }
+      );
 
       // Send completion event
       res.write(`data: ${JSON.stringify({

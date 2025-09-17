@@ -38,10 +38,23 @@ export class ContentStackAIService {
     query: ContentStackQuery, 
     onChunk: (chunk: string) => void
   ): Promise<void> {
+    return this.processContentQueryStreamWithStatus(query, onChunk, () => {});
+  }
+
+  /**
+   * Process a natural language query with streaming response and status updates
+   */
+  static async processContentQueryStreamWithStatus(
+    query: ContentStackQuery, 
+    onChunk: (chunk: string) => void,
+    onStatus: (status: string) => void
+  ): Promise<void> {
     try {
       console.log(`Processing ContentStack streaming query: ${query.query}`);
+      onStatus('🔍 Analyzing your query...');
 
       // Step 1: Get or create MCP instance
+      onStatus('🔧 Connecting to ContentStack...');
       const mcpConfig = {
         apiKey: query.apiKey,
         projectId: query.projectId,
@@ -53,11 +66,13 @@ export class ContentStackAIService {
 
       // Step 2: Start MCP server if not connected
       if (!mcpService.isServerConnected()) {
+        onStatus('⚡ Starting content service...');
         await mcpService.startMCPServer();
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
       // Step 3: Get available tools for intelligent selection
+      onStatus('🛠️ Loading content tools...');
       const toolsResult = await mcpService.listAvailableTools();
       if (!toolsResult.success) {
         onChunk('I apologize, but I\'m unable to access the content tools right now. Please try again later.');
@@ -65,10 +80,13 @@ export class ContentStackAIService {
       }
 
       // Step 4: Enhanced LLM-driven tool selection
+      onStatus('🤖 Selecting relevant content sources...');
       const selectedTools = await this.selectToolsWithLLM(query.query, toolsResult.data.tools);
+      console.log("tools: ", toolsResult.data.tools)
       console.log(`🤖 LLM selected ${selectedTools.length} tools:`, selectedTools.map(t => t.name));
 
       // Step 5: Execute selected tools and gather comprehensive data
+      onStatus('📊 Gathering content data...');
       let multiToolData;
       try {
         multiToolData = await this.executeSelectedTools(selectedTools);
@@ -80,12 +98,14 @@ export class ContentStackAIService {
         };
       }
 
-      // Step 6: Add user message to conversation memory
+      // Step 6: Generate streaming AI response using user's chosen LLM provider
+      onStatus('✨ Generating your response...');
+      
+      // Add user message to conversation memory (can be done in parallel)
       if (query.sessionId) {
         conversationMemory.addMessage(query.sessionId, query.tenantId, 'user', query.query);
       }
 
-      // Step 7: Generate streaming AI response using user's chosen LLM provider
       let assistantResponse = '';
       
       await this.generateEnhancedAIResponseStream(
@@ -174,7 +194,7 @@ export class ContentStackAIService {
       name: tool.name,
       description: tool.description
     }));
-
+    console.log("tools:", toolDescriptions)
     const systemMessage = `You are an intelligent content retrieval system for a website powered by ContentStack CMS. Your role is to select the most efficient tools to answer visitor questions accurately.
 
 🎯 OBJECTIVE: Choose the minimal set of tools needed to provide accurate, helpful information to website visitors.
@@ -199,10 +219,13 @@ Priority Guidelines:
 Return ONLY a JSON array of tool names: ["tool1", "tool2", "tool3"]`;
 
     try {
-      const result = await groq.sendToGroq([
-        { role: 'system', content: systemMessage },
-        { role: 'user', content: userQuery }
-      ], 'llama-3.3-70b-versatile');
+      const result = await groq.sendToGroq(
+        [
+          { role: "system", content: systemMessage },
+          { role: "user", content: userQuery },
+        ],
+        "llama-3.1-8b-instant"
+      );
 
       const selectedToolNames = JSON.parse(result.content || '[]');
       return availableTools.filter(tool => selectedToolNames.includes(tool.name));
@@ -255,6 +278,7 @@ Return ONLY a JSON array of tool names: ["tool1", "tool2", "tool3"]`;
             arguments: params
           });
           results[tool.name] = result;
+          console.log("tools", results)
         }
       } catch (error) {
         console.error(`Failed to execute tool ${tool.name}:`, error);
@@ -667,7 +691,10 @@ Since specific website content isn't available, inform the user that you need mo
         }
       ];
 
-      const aiResult = await groq.sendToGroq(aiMessages, 'llama-3.3-70b-versatile');
+      const aiResult = await groq.sendToGroq(
+        aiMessages,
+        "llama-3.1-8b-instant"
+      );
       
       if (!aiResult.content) {
         throw new Error('Failed to generate content structure');

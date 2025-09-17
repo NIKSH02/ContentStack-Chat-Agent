@@ -346,20 +346,20 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<v
 /**
  * Helper function to get base URL by region
  */
-function getBaseUrlByRegion(region: string): string {
-  switch (region) {
-    case 'EU':
-      return 'https://eu-app.contentstack.com';
-    case 'AZURE_NA':
-      return 'https://azure-na-app.contentstack.com';
-    case 'AZURE_EU':
-      return 'https://azure-eu-app.contentstack.com';
-    case 'GCP_NA':
-      return 'https://gcp-na-app.contentstack.com';
-    case 'US':
-      return 'https://app.contentstack.com';
-    case 'EU':
-    default:
-      return 'https://eu-app.contentstack.com';
-  }
-}
+// function getBaseUrlByRegion(region: string): string {
+//   switch (region) {
+//     case 'EU':
+//       return 'https://eu-app.contentstack.com';
+//     case 'AZURE_NA':
+//       return 'https://azure-na-app.contentstack.com';
+//     case 'AZURE_EU':
+//       return 'https://azure-eu-app.contentstack.com';
+//     case 'GCP_NA':
+//       return 'https://gcp-na-app.contentstack.com';
+//     case 'US':
+//       return 'https://app.contentstack.com';
+//     case 'EU':
+//     default:
+//       return 'https://eu-app.contentstack.com';
+//   }
+// }
