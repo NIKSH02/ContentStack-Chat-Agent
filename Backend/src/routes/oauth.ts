@@ -3,9 +3,10 @@ import {
   initiateOAuth,
   handleCallback,
   getUserProjects,
-  getStackTokens,
+  // getStackTokens,
   refreshAccessToken,
-  clearOAuthCache
+  clearOAuthCache,
+  handleInstallWebhook
 } from '../controllers/oauthController';
 
 const router = Router();
@@ -43,7 +44,7 @@ router.get('/contentstack/projects', getUserProjects);
  * @desc    Get delivery tokens for a specific stack
  * @access  Public (requires access_token in query)
  */
-router.get('/contentstack/stacks/:stackApiKey/tokens', getStackTokens);
+// router.get('/contentstack/stacks/:stackApiKey/tokens', getStackTokens);
 
 /**
  * @route   POST /oauth/contentstack/refresh
@@ -51,5 +52,12 @@ router.get('/contentstack/stacks/:stackApiKey/tokens', getStackTokens);
  * @access  Public (requires refresh_token in body)
  */
 router.post('/contentstack/refresh', refreshAccessToken);
+
+/**
+ * @route   POST /oauth/contentstack/webhook/install
+ * @desc    Handle app installation webhook from ContentStack
+ * @access  Public (ContentStack webhook endpoint)
+ */
+router.post('/contentstack/webhook/install', handleInstallWebhook);
 
 export default router;

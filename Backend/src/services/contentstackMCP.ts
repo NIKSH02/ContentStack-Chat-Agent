@@ -43,6 +43,11 @@ export class ContentStackMCPService extends EventEmitter {
     try {
       console.log('Starting ContentStack MCP server...');
 
+      // Validate API key format
+      if (!this.config.apiKey || this.config.apiKey.length < 10) {
+        throw new Error('Invalid ContentStack API key format');
+      }
+
       // Environment variables for the MCP server
       const env: Record<string, string> = {
         ...process.env as Record<string, string>,
@@ -101,6 +106,9 @@ export class ContentStackMCPService extends EventEmitter {
         });
       }
 
+      // Wait a moment for the server to initialize
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       this.isConnected = true;
       console.log('✅ ContentStack MCP server started successfully');
 
@@ -382,12 +390,40 @@ class ContentStackMCPManager {
   getInstance(tenantId: string, config: ContentStackMCPConfig): ContentStackMCPService {
     const key = `${tenantId}-${config.apiKey}`;
     
-    if (!this.instances.has(key)) {
-      const instance = new ContentStackMCPService(config);
-      this.instances.set(key, instance);
+    // Check if we already have an instance with this exact config
+    if (this.instances.has(key)) {
+      return this.instances.get(key)!;
     }
     
-    return this.instances.get(key)!;
+    // Clean up any existing instances for this tenant with different API keys
+    this.cleanupTenantInstances(tenantId, config.apiKey);
+    
+    // Create new instance
+    const instance = new ContentStackMCPService(config);
+    this.instances.set(key, instance);
+    
+    console.log(`✨ Created new MCP instance for tenant ${tenantId} with API key ${config.apiKey.substring(0, 8)}...`);
+    
+    return instance;
+  }
+
+  /**
+   * Clean up old instances for a tenant when API key changes
+   */
+  private cleanupTenantInstances(tenantId: string, currentApiKey: string): void {
+    const keysToRemove: string[] = [];
+    
+    for (const [key, instance] of this.instances.entries()) {
+      if (key.startsWith(`${tenantId}-`) && !key.endsWith(`-${currentApiKey}`)) {
+        console.log(`🧹 Cleaning up old MCP instance: ${key}`);
+        instance.stopMCPServer().catch(err => 
+          console.warn('Error stopping old MCP server:', err)
+        );
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => this.instances.delete(key));
   }
 
   /**
@@ -408,6 +444,28 @@ class ContentStackMCPManager {
    */
   getActiveInstances(): Map<string, ContentStackMCPService> {
     return this.instances;
+  }
+
+  /**
+   * Force cleanup of all instances for a tenant (useful when changing API keys)
+   */
+  async forceCleanupTenant(tenantId: string): Promise<void> {
+    const keysToRemove: string[] = [];
+    
+    for (const [key, instance] of this.instances.entries()) {
+      if (key.startsWith(`${tenantId}-`)) {
+        console.log(`🔄 Force cleaning up MCP instance: ${key}`);
+        try {
+          await instance.stopMCPServer();
+        } catch (error) {
+          console.warn('Error during force cleanup:', error);
+        }
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => this.instances.delete(key));
+    console.log(`✅ Cleaned up ${keysToRemove.length} MCP instances for tenant ${tenantId}`);
   }
 }
 

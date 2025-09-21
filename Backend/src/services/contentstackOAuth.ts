@@ -40,6 +40,24 @@ export interface ContentStackStack {
   settings?: {
     stack_variables?: any;
   };
+  content_types?: Array<{     //from here to 
+    uid: string;
+    title: string;
+    schema?: any;
+  }>;
+  entries?: Array<{
+    uid: string;
+    title: string;
+    content_type: string;
+    locale: string;
+  }>;
+  assets?: Array<{
+    uid: string;
+    title: string;
+    filename: string;
+    url: string;
+    content_type: string;
+  }>;                       // here can be deleted if not implemented
 }
 
 export interface ContentStackProject {
@@ -317,44 +335,277 @@ class ContentStackOAuthService {
   }
 
   /**
-   * Get specific stack details including delivery tokens
+   * Get specific stack details including delivery tokens, content, and assets
    */
-  async getStackDetails(accessToken: string, stackApiKey: string): Promise<any> {
+  async getStackDetails(accessToken: string, stackApiKey: string): Promise<ContentStackStack> {
     try {
       const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
       const response = await axios.get(`${apiBase}/v3/stacks`, {
         headers: {
-          'authtoken': accessToken,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'api_key': stackApiKey,
         },
       });
 
-      return response.data.stack;
+      const stack = response.data.stack;
+      
+      // OAuth tokens from Developer Hub apps have limited scope
+      // They cannot access Management API endpoints for content/assets
+      console.log(`OAuth token has limited scope - stack details available but not content/assets for: ${stack.name} (${stackApiKey})`);
+
+      return {
+        uid: stack.uid,
+        name: stack.name,
+        description: stack.description || '',
+        master_locale: stack.master_locale,
+        api_key: stackApiKey,
+        organization_uid: stack.org_uid,
+        settings: stack.settings || {},
+        content_types: [], // OAuth tokens cannot access content types
+        entries: [],       // OAuth tokens cannot access entries  
+        assets: []         // OAuth tokens cannot access assets
+      };
     } catch (error: any) {
       console.error('Error fetching stack details:', error.response?.data || error.message);
       throw new Error('Failed to fetch stack details');
     }
   }
 
+  // /**
+  //  * Get delivery tokens for a stack
+  //  */
+  // async getDeliveryTokens(accessToken: string, stackApiKey: string): Promise<any[]> {
+  //   try {
+  //     const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
+  //     const response = await axios.get(`${apiBase}/v3/stacks/${stackApiKey}/delivery_tokens`, {
+  //       headers: {
+  //         'authtoken': accessToken,
+  //         'Content-Type': 'application/json',
+  //         'api_key': stackApiKey,
+  //       },
+  //     });
+
+  //     return response.data.delivery_tokens || [];
+  //   } catch (error: any) {
+  //     console.error('Error fetching delivery tokens:', error.response?.data || error.message);
+  //     throw new Error('Failed to fetch delivery tokens');
+  //   }
+  // }
+
   /**
-   * Get delivery tokens for a stack
+   * Get content types for a specific stack
    */
-  async getDeliveryTokens(accessToken: string, stackApiKey: string): Promise<any[]> {
+  async getStackContentTypes(accessToken: string, stackApiKey: string): Promise<any[]> {
     try {
       const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
-      const response = await axios.get(`${apiBase}/v3/stacks/${stackApiKey}/delivery_tokens`, {
+      const response = await axios.get(`${apiBase}/v3/content_types`, {
         headers: {
-          'authtoken': accessToken,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'api_key': stackApiKey,
         },
+        params: {
+          include_count: false,
+          include_global_field_schema: false
+        }
       });
 
-      return response.data.delivery_tokens || [];
+      return response.data.content_types || [];
     } catch (error: any) {
-      console.error('Error fetching delivery tokens:', error.response?.data || error.message);
-      throw new Error('Failed to fetch delivery tokens');
+      console.warn('Could not fetch content types:', error.response?.data || error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get all entries for a specific stack (with pagination support)
+   */
+  async getStackEntries(accessToken: string, stackApiKey: string, limit: number = 100): Promise<any[]> {
+    try {
+      const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
+      const allEntries: any[] = [];
+      let skip = 0;
+      let hasMore = true;
+
+      while (hasMore && allEntries.length < 1000) { // Safety limit
+        const response = await axios.get(`${apiBase}/v3/entries`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'api_key': stackApiKey,
+          },
+          params: {
+            include_count: true,
+            include_publish_details: false,
+            include_workflow: false,
+            limit: Math.min(limit, 100),
+            skip: skip
+          }
+        });
+
+        const entries = response.data.entries || [];
+        allEntries.push(...entries);
+        
+        hasMore = entries.length === limit && response.data.count > (skip + limit);
+        skip += limit;
+      }
+
+      return allEntries;
+    } catch (error: any) {
+      console.warn('Could not fetch entries:', error.response?.data || error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get all assets for a specific stack (with pagination support)
+   */
+  async getStackAssets(accessToken: string, stackApiKey: string, limit: number = 100): Promise<any[]> {
+    try {
+      const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
+      const allAssets: any[] = [];
+      let skip = 0;
+      let hasMore = true;
+
+      while (hasMore && allAssets.length < 1000) { // Safety limit
+        const response = await axios.get(`${apiBase}/v3/assets`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'api_key': stackApiKey,
+          },
+          params: {
+            include_count: true,
+            include_publish_details: false,
+            limit: Math.min(limit, 100),
+            skip: skip
+          }
+        });
+
+        const assets = response.data.assets || [];
+        allAssets.push(...assets);
+        
+        hasMore = assets.length === limit && response.data.count > (skip + limit);
+        skip += limit;
+      }
+
+      return allAssets;
+    } catch (error: any) {
+      console.warn('Could not fetch assets:', error.response?.data || error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch organization stacks when we have user-level OAuth access
+   * This is used when authorization_type is 'user' and stack_api_key is empty
+   */
+  async getOrganizationStacks(accessToken: string, organizationUid: string): Promise<ContentStackStack[]> {
+    try {
+      console.log(`Fetching stacks for organization ${organizationUid}...`);
+      
+      // Try OAuth-compatible Apps API first
+      try {
+        const response = await axios.get(`${this.baseUrl}/apps-api/organizations/${organizationUid}/stacks`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('Organization stacks response (Apps API):', response.data);
+        
+        if (response.data.stacks && Array.isArray(response.data.stacks)) {
+          const stacks = await Promise.all(response.data.stacks.map(async (stack: any) => {
+            const stackData: ContentStackStack = {
+              uid: stack.uid,
+              name: stack.name || stack.stack_name,
+              description: stack.description || '',
+              master_locale: stack.master_locale || 'en-us',
+              api_key: stack.api_key,
+              organization_uid: organizationUid,
+              settings: stack.settings || {}
+            };
+
+            // OAuth tokens from Developer Hub apps have limited scope
+            // They cannot access Management API endpoints for content/assets
+            console.log(`OAuth token has limited scope - cannot fetch detailed content/assets for stack: ${stack.name}`);
+            
+            // Set empty arrays since we can't fetch this data with OAuth tokens
+            stackData.content_types = [];
+            stackData.entries = [];
+            stackData.assets = [];
+            
+            console.log(`Stack ${stack.name}: OAuth scope limited - content/asset data not available`)
+
+            return stackData;
+          }));
+
+          return stacks;
+        }
+      } catch (appsApiError: any) {
+        console.warn('Apps API failed, trying Management API:', appsApiError.response?.data || appsApiError.message);
+      }
+      
+      // Fallback to Management API
+      try {
+        const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
+        const response = await axios.get(`${apiBase}/v3/stacks`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          params: {
+            organization_uid: organizationUid,
+            include_collaborators: false,
+            include_stack_variables: false,
+            include_discrete_variables: false,
+            include_count: false
+          }
+        });
+        
+        console.log('Organization stacks response (Management API):', response.data);
+        
+        const stacks = response.data.stacks || [];
+        const enrichedStacks = await Promise.all(stacks.map(async (stack: any) => {
+          const stackData: ContentStackStack = {
+            uid: stack.uid,
+            name: stack.name,
+            description: stack.description || '',
+            master_locale: stack.master_locale || 'en-us',
+            api_key: stack.api_key,
+            organization_uid: stack.org_uid || organizationUid,
+            settings: stack.settings || {}
+          };
+
+          // OAuth tokens from Developer Hub apps have limited scope
+          // They cannot access Management API endpoints for content/assets
+          console.log(`OAuth token has limited scope - cannot fetch detailed content/assets for stack: ${stack.name}`);
+          
+          // Set empty arrays since we can't fetch this data with OAuth tokens
+          stackData.content_types = [];
+          stackData.entries = [];
+          stackData.assets = [];
+          
+          console.log(`Stack ${stack.name}: OAuth scope limited - content/asset data not available`)
+
+          return stackData;
+        }));
+
+        return enrichedStacks;
+      } catch (managementApiError: any) {
+        console.error('Management API also failed:', managementApiError.response?.data || managementApiError.message);
+      }
+      
+      // If both APIs fail, return empty array but don't throw
+      console.warn('Could not fetch organization stacks, returning empty array');
+      return [];
+      
+    } catch (error: any) {
+      console.error('Error fetching organization stacks:', error.response?.data || error.message);
+      // Return empty array instead of throwing to prevent OAuth flow failure
+      return [];
     }
   }
 
