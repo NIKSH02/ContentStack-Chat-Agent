@@ -68,6 +68,12 @@ export async function sendToGroq(messages: CleanMessage[], model: string = 'llam
   }
 }
 
+// Estimate tokens in messages (rough approximation: 1 token ≈ 4 characters)
+function estimateTokens(messages: CleanMessage[]): number {
+  const totalChars = messages.reduce((sum, msg) => sum + (msg.content?.length || 0), 0);
+  return Math.ceil(totalChars / 4);
+}
+
 // Send streaming chat message to Groq
 export async function sendToGroqStream(
   messages: CleanMessage[], 
@@ -76,6 +82,15 @@ export async function sendToGroqStream(
 ): Promise<void> {
   if (!process.env.GROQ_API_KEY) {
     throw new Error('GROQ_API_KEY not configured');
+  }
+
+  // Check payload size - Groq has limits around 8K tokens for most models
+  const estimatedTokens = estimateTokens(messages);
+  console.log(`🔍 Groq payload size check: ~${estimatedTokens} tokens`);
+  
+  if (estimatedTokens > 7000) {
+    console.log(`⚠️ Payload too large for Groq streaming (${estimatedTokens} tokens > 7000), rejecting`);
+    throw new Error(`Payload too large for Groq streaming: ${estimatedTokens} tokens`);
   }
 
   try {
@@ -118,28 +133,24 @@ export async function sendToGroqStream(
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
+          if (data === '[DONE]') continue;
           
-          if (data === '[DONE]') {
-            return;
-          }
-
           try {
             const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content;
-            
-            if (content) {
-              onChunk(content);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              onChunk(delta);
             }
           } catch (e) {
-            // Skip invalid JSON
-            continue;
+            // Ignore parsing errors for individual chunks
           }
         }
       }
     }
-  } catch (error: any) {
+
+  } catch (error) {
     console.error('Groq streaming error:', error);
-    throw new Error(`Groq streaming failed: ${error.message}`);
+    throw new Error(`Groq streaming failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

@@ -79,7 +79,9 @@ export class ContentStackAIController {
 
       console.log(`🚀 Processing streaming ContentStack query for tenant: ${tenantId}`);
       console.log(`🔍 Query: "${query}"`);
-      console.log(`🤖 Streaming with: ${provider || 'groq'}:${model || 'llama-3.3-70b-versatile'}`);
+      console.log(`📨 Raw provider received: "${provider}" (type: ${typeof provider})`);
+      console.log(`📨 Raw model received: "${model}" (type: ${typeof model})`);
+      console.log(`🤖 Final streaming config: ${provider || 'groq'}:${model || 'llama-3.3-70b-versatile'}`);
       console.log(`🧠 Session ID: ${sessionId || 'not provided'}`);
 
       const queryData: ContentStackQuery = {

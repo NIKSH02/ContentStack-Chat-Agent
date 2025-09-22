@@ -81,6 +81,36 @@ export async function sendMessageStream(
   }
 }
 
+// Map models to appropriate provider-specific models
+function getCompatibleModel(provider: string, requestedModel?: string): string | undefined {
+  const providerData = getAvailableProviders().find(p => p.name === provider);
+  if (!providerData) return undefined;
+  
+  // If requested model is available for this provider, use it
+  if (requestedModel && providerData.models.includes(requestedModel)) {
+    return requestedModel;
+  }
+  
+  // Provider-specific fallback models
+  const fallbackModels: Record<string, string> = {
+    'groq': 'llama-3.1-8b-instant',
+    'gemini': 'gemini-1.5-flash',
+    'openrouter': 'mistralai/mistral-7b-instruct:free'
+  };
+  
+  // If the requested model is a Gemini model, try to find compatible alternatives
+  if (requestedModel?.includes('gemini')) {
+    if (provider === 'gemini') {
+      // Use a compatible Gemini model
+      return 'gemini-1.5-flash';
+    }
+    // For non-Gemini providers, use their default
+    return fallbackModels[provider];
+  }
+  
+  return fallbackModels[provider] || providerData.models[0];
+}
+
 // Send streaming message with fallback to other providers
 export async function sendMessageStreamWithFallback(
   messages: CleanMessage[],
@@ -97,7 +127,9 @@ export async function sendMessageStreamWithFallback(
   // Try preferred provider first
   if (preferredProvider) {
     try {
-      await sendMessageStream(preferredProvider, messages, onChunk, model);
+      const compatibleModel = getCompatibleModel(preferredProvider, model);
+      console.log(`🎯 Using model '${compatibleModel}' for provider '${preferredProvider}'`);
+      await sendMessageStream(preferredProvider, messages, onChunk, compatibleModel);
       return; // Success
     } catch (error: any) {
       console.log(`Streaming provider ${preferredProvider} failed, trying fallback...`, error.message);
@@ -109,7 +141,9 @@ export async function sendMessageStreamWithFallback(
     if (provider.name === preferredProvider) continue; // Already tried
     
     try {
-      await sendMessageStream(provider.name, messages, onChunk, model);
+      const compatibleModel = getCompatibleModel(provider.name, model);
+      console.log(`🔄 Fallback: Using model '${compatibleModel}' for provider '${provider.name}'`);
+      await sendMessageStream(provider.name, messages, onChunk, compatibleModel);
       return; // Success
     } catch (error: any) {
       console.log(`Streaming provider ${provider.name} failed:`, error.message);

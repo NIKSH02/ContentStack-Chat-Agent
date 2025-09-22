@@ -81,23 +81,74 @@ export class ContentStackAIService {
         return;
       }
 
-      // Step 4: Enhanced LLM-driven tool selection
+      // Step 4: Get content types FIRST for intelligent content-aware selection
+      onStatus('📋 Analyzing content structure...');
+      let contentTypes: any[] = [];
+      try {
+        const contentTypesResult = await mcpService.sendRequest('tools/call', {
+          name: 'get_all_content_types',
+          arguments: { branch: 'main' }
+        });
+        
+        if (contentTypesResult.success && contentTypesResult.data) {
+          // Parse content types data
+          let contentTypesData = contentTypesResult.data;
+          if (contentTypesData.content && Array.isArray(contentTypesData.content)) {
+            try {
+              contentTypes = contentTypesData.content.map((item: any) => {
+                if (item.type === 'text' && item.text) {
+                  try {
+                    return JSON.parse(item.text);
+                  } catch {
+                    return item.text;
+                  }
+                }
+                return item;
+              });
+              contentTypes = contentTypes[0]?.content_types || contentTypes;
+            } catch (e) {
+              contentTypes = contentTypesData.content_types || [];
+            }
+          }
+        }
+        console.log(`📋 Found ${contentTypes.length} content types:`, contentTypes.map((ct: any) => ct.uid || ct.name).join(', '));
+      } catch (error) {
+        console.warn('Failed to get content types, proceeding without them:', error);
+        contentTypes = [];
+      }
+
+      // Step 5: Enhanced LLM-driven tool AND content-type selection
       onStatus('🤖 Selecting relevant content sources...');
-      const selectedTools = await this.selectToolsWithLLM(query.query, toolsResult.data.tools);
+      const { selectedTools, selectedContentTypes } = await this.selectToolsAndContentTypesWithLLM(
+        query.query, 
+        toolsResult.data.tools, 
+        contentTypes
+      );
 
-      console.log(`🤖 LLM selected ${selectedTools.length} tools:`, selectedTools.map(t => t.name));
+      console.log(`🤖 LLM selected ${selectedTools.length} tools:`, selectedTools.map((t: any) => t.name));
+      console.log(`📋 LLM selected content types:`, selectedContentTypes);
 
-      // Step 5: Execute selected tools and gather comprehensive data
+      // Step 6: Execute selected tools with content-type awareness
       onStatus('📊 Gathering content data...');
       let multiToolData;
       try {
-        multiToolData = await this.executeSelectedTools(selectedTools);
+        multiToolData = await this.executeSelectedToolsWithContentTypes(selectedTools, selectedContentTypes);
         console.log(`📊 Executed tools, results:`, Object.keys(multiToolData));
       } catch (error: any) {
         console.warn('Multi-tool execution failed, trying fallback:', error.message);
         try {
+          // Fallback to basic content types and page entries
           multiToolData = {
-            'get_all_content_types': await mcpService.getContentTypes()
+            'get_all_content_types': await mcpService.getContentTypes(),
+            'get_all_entries_page': await mcpService.sendRequest('tools/call', {
+              name: 'get_all_entries',
+              arguments: {
+                content_type_uid: 'page',
+                limit: '10',
+                include_count: true,
+                branch: 'main'
+              }
+            })
           };
           
           // Check if fallback also failed
@@ -109,6 +160,28 @@ export class ContentStackAIService {
           onChunk(`I'm unable to retrieve content from ContentStack. This usually indicates an API key issue or connectivity problem. Error details: ${fallbackError.message}. Please verify your Stack API key is correct and try again.`);
           return;
         }
+      }
+
+      // Check if we have any meaningful data
+      const hasValidData = multiToolData && Object.keys(multiToolData).some(key => 
+        multiToolData[key] && multiToolData[key].success && multiToolData[key].data
+      );
+
+      if (!hasValidData) {
+        console.warn('⚠️ No valid content data available, providing informative response');
+        onChunk(`I apologize, but I'm currently unable to retrieve specific content from this website. This could be due to:
+
+- API rate limiting (we're receiving high traffic)
+- Temporary connectivity issues with the content service
+- Configuration issues with the content management system
+
+**What you can try:**
+- Wait a moment and try your question again
+- Ask about general website topics or navigation
+- Try a more specific question about particular content you're looking for
+
+I'm designed to help you find information about this website's content, products, and services. Once the content service is available again, I'll be able to provide detailed, accurate information directly from the website.`);
+        return;
       }
 
       // Step 6: Generate streaming AI response using user's chosen LLM provider
@@ -503,61 +576,446 @@ export class ContentStackAIService {
   }
 
   /**
-   * Enhanced LLM-driven tool selection
+   * Filter tools to exclude any modification/write operations - READ-ONLY system
    */
-  private static async selectToolsWithLLM(userQuery: string, availableTools: any[]): Promise<any[]> {
-    const toolDescriptions = availableTools.map(tool => ({
+  private static filterReadOnlyTools(availableTools: any[]): any[] {
+    const FORBIDDEN_OPERATIONS = [
+      'create', 'update', 'delete', 'publish', 'unpublish', 'deploy', 
+      'add', 'remove', 'merge', 'clone', 'localize', 'unlocalize'
+    ];
+
+    // SIMPLIFIED APPROACH: Only allow get_all_* tools that don't require specific IDs
+    const ALLOWED_TOOLS = [
+      // Content & Structure
+      'get_all_content_types',
+      'get_all_entries', 
+      'get_all_assets',
+      
+      // Taxonomies & Terms  
+      'get_all_taxonomies',
+      'get_all_terms',
+      'get_all_terms_across_all_taxonomies',
+      
+      // System & Configuration
+      'get_all_languages',
+      'get_all_branches', 
+      'get_all_branch_aliases',
+      'get_all_global_fields',
+      'get_all_releases',
+      'get_all_items_in_a_release',
+      'get_all_variants_of_a_content_type',
+      'get_all_environments',
+      
+      // Specialized Gets
+      'get_publish_queue',
+      'export_a_taxonomy'
+    ];
+
+    // EXCLUDED: All single/specific ID-required tools
+    // 'get_single_entry', 'get_a_single_asset', 'get_a_single_taxonomy', etc.
+    // These require specific IDs that we don't have and are complex to implement
+
+    // Filter out any tools that contain forbidden operations
+    const safeTools = availableTools.filter(tool => {
+      const toolName = tool.name.toLowerCase();
+      const toolDesc = (tool.description || '').toLowerCase();
+      
+      // Check if tool name or description contains forbidden operations
+      const hasForbiddenOperation = FORBIDDEN_OPERATIONS.some(op => 
+        toolName.includes(op) || toolDesc.includes(op)
+      );
+      
+      // Also ensure it's in our explicit allowed list
+      const isExplicitlyAllowed = ALLOWED_TOOLS.includes(tool.name);
+      
+      if (hasForbiddenOperation && !isExplicitlyAllowed) {
+        console.log(`🚫 Excluding modification tool: ${tool.name} (${tool.description})`);
+        return false;
+      }
+      
+      return isExplicitlyAllowed;
+    });
+
+    console.log(`✅ Filtered to ${safeTools.length} read-only tools from ${availableTools.length} total tools`);
+    return safeTools;
+  }
+
+  /**
+   * Enhanced LLM-driven tool AND content-type selection - READ-ONLY OPERATIONS ONLY
+   */
+  private static async selectToolsAndContentTypesWithLLM(
+    userQuery: string, 
+    availableTools: any[], 
+    availableContentTypes: any[]
+  ): Promise<{ selectedTools: any[], selectedContentTypes: any[] }> {
+    // CRITICAL SECURITY: Filter out ALL modification tools
+    const safeTools = this.filterReadOnlyTools(availableTools);
+    
+    const toolDescriptions = safeTools.map(tool => ({
       name: tool.name,
       description: tool.description
     }));
-    console.log("tools:", toolDescriptions) //tools
-    const systemMessage = `You are an intelligent content retrieval system for a website powered by ContentStack CMS. Your role is to select the most efficient tools to answer visitor questions accurately.
 
-🎯 OBJECTIVE: Choose the minimal set of tools needed to provide accurate, helpful information to website visitors.
+    const contentTypeDescriptions = availableContentTypes.map(ct => ({
+      uid: ct.uid,
+      title: ct.title || ct.uid,
+      description: ct.description || 'No description'
+    }));
+    
+    console.log("🔒 Safe read-only tools:", toolDescriptions);
+    console.log("📋 Available content types:", contentTypeDescriptions);
+    
+    const systemMessage = `You are a READ-ONLY content retrieval system for ContentStack CMS. 
 
-Available ContentStack content tools:
+🚫 ABSOLUTELY FORBIDDEN - NEVER SELECT TOOLS THAT:
+- CREATE, UPDATE, DELETE, or MODIFY any content
+- PUBLISH, UNPUBLISH, or DEPLOY content
+- ADD, REMOVE, MERGE, or ALTER data in any way
+- LOCALIZE, UNLOCALIZE, or change content structure
+- Require specific IDs (entry_id, asset_id, term_id, etc.)
+
+✅ ONLY SELECT "get_all_*" TOOLS THAT:
+- Start with "get_all_" prefix (get_all_entries, get_all_assets, get_all_terms)
+- Retrieve bulk/list data without requiring specific IDs
+- Are simple to execute with minimal parameters
+
+🎯 PREFERRED TOOL PATTERNS:
+- get_all_entries (for content like blogs, articles, pages)
+- get_all_assets (for images, files, media)
+- get_all_terms (for taxonomy/categories)
+- get_all_content_types (for schema information)
+
+Available READ-ONLY tools:
 ${JSON.stringify(toolDescriptions, null, 2)}
 
-🔍 TOOL SELECTION STRATEGY for query: "${userQuery}"
+Available Content Types:
+${JSON.stringify(contentTypeDescriptions, null, 2)}
 
-Priority Guidelines:
-1. **Navigation/General Questions**: Start with content types to understand site structure
-2. **Specific Content**: Get entries from relevant content types (blogs, products, pages)
-3. **Visual/Media Queries**: ALWAYS include assets when users ask about: images, photos, gallery, pictures, media, files, downloads, or visual content
-4. **Content Display**: Include both entries AND assets when users want to "see" or "show" content
-5. **Technical/Admin**: Avoid environments unless specifically about publishing/deployment
+QUERY: "${userQuery}"
 
-⚡ EFFICIENCY RULES:
-- Select only 1-3 most relevant tools
-- Prioritize tools that directly answer the user's question
-- Avoid redundant data collection
-- Focus on visitor-facing content, not technical backend details
+🧠 INTELLIGENT CONTENT SELECTION:
+- Analyze the user query to understand what content they want
+- For "blog", "article", "post" queries → look for blog_post, article, post content types
+- For "product", "item" queries → look for product, item content types  
+- For "page", "about", "contact" queries → look for page content types
+- For "recent", "latest", "newest" → select content types that likely have dated content
+- For "image", "photo", "media" → include get_all_assets tool AND relevant content types
 
-Return ONLY a JSON array of tool names: ["tool1", "tool2", "tool3"]`;
+🔒 SAFETY & SIMPLICITY RULES:
+- This is a READ-ONLY system for content display only
+- ONLY select "get_all_*" tools (no single item tools)
+- Select 1-2 most relevant bulk GET tools only
+- Select 1-3 most relevant content types for the query
+- Avoid tools that need specific IDs or complex parameters
+- Return ONLY a JSON object with this structure:
+
+{
+  "tools": ["tool_name1", "tool_name2"],
+  "content_types": ["content_type_uid1", "content_type_uid2"]
+}
+
+RESPOND WITH ONLY THE JSON OBJECT:`;
 
     try {
       const result = await groq.sendToGroq(
         [
           { role: "system", content: systemMessage },
-          { role: "user", content: userQuery },
+          { role: "user", content: `Return JSON object for: ${userQuery}` },
         ],
         "llama-3.1-8b-instant"
       );
 
-      const selectedToolNames = JSON.parse(result.content || '[]');
-      return availableTools.filter(tool => selectedToolNames.includes(tool.name));
+      let responseContent = result.content || '{}';
+      console.log(`🤖 LLM tool+content-type selection raw response: "${responseContent}"`);
+
+      // Extract JSON object from response
+      let jsonMatch = responseContent.match(/\{[\s\S]*?\}/);
+      if (jsonMatch) {
+        responseContent = jsonMatch[0];
+      } else {
+        throw new Error('No JSON object found in LLM response');
+      }
+
+      console.log(`🤖 Extracted JSON: "${responseContent}"`);
+      const selection = JSON.parse(responseContent);
+      
+      if (!selection.tools || !Array.isArray(selection.tools)) {
+        throw new Error('Invalid tools array in response');
+      }
+
+      const selectedTools = safeTools.filter(tool => selection.tools.includes(tool.name));
+      const selectedContentTypes = selection.content_types || [];
+      
+      console.log(`🎯 Selected tools: ${selectedTools.map(t => t.name).join(', ')}`);
+      console.log(`📋 Selected content types: ${selectedContentTypes.join(', ')}`);
+      
+      return { selectedTools, selectedContentTypes };
+
     } catch (error) {
-      console.error('LLM tool selection failed, using fallback:', error);
-      // Fallback to basic tool selection
-      return [
-        availableTools.find(t => t.name === 'get_all_content_types'),
-        availableTools.find(t => t.name === 'get_all_entries')
-      ].filter(Boolean);
+      console.error('LLM tool+content-type selection failed, using fallback:', error);
+      
+      // CRITICAL SECURITY: Use only filtered safe tools for fallback
+      const safeTools = this.filterReadOnlyTools(availableTools);
+      
+      // Intelligent fallback based on query patterns
+      const query = userQuery.toLowerCase();
+      let fallbackTools: any[] = [];
+      let fallbackContentTypes: string[] = [];
+      
+      if (query.includes('blog') || query.includes('post') || query.includes('article')) {
+        fallbackTools = [safeTools.find(t => t.name === 'get_all_entries')];
+        fallbackContentTypes = availableContentTypes
+          .filter(ct => ct.uid && (ct.uid.includes('blog') || ct.uid.includes('post') || ct.uid.includes('article')))
+          .map(ct => ct.uid)
+          .slice(0, 2);
+      } else if (query.includes('product') || query.includes('item')) {
+        fallbackTools = [safeTools.find(t => t.name === 'get_all_entries')];
+        fallbackContentTypes = availableContentTypes
+          .filter(ct => ct.uid && (ct.uid.includes('product') || ct.uid.includes('item')))
+          .map(ct => ct.uid)
+          .slice(0, 2);
+      } else if (query.includes('image') || query.includes('photo') || query.includes('media')) {
+        fallbackTools = [
+          safeTools.find(t => t.name === 'get_all_entries'),
+          safeTools.find(t => t.name === 'get_all_assets')
+        ];
+        fallbackContentTypes = ['page']; // Default fallback
+      } else {
+        fallbackTools = [
+          safeTools.find(t => t.name === 'get_all_content_types'),
+          safeTools.find(t => t.name === 'get_all_entries')
+        ];
+        fallbackContentTypes = ['page']; // Default fallback
+      }
+      
+      const validFallbackTools = fallbackTools.filter(Boolean);
+      console.log(`🔒 Using SAFE READ-ONLY fallback tools: ${validFallbackTools.map(t => t?.name).join(', ')}`);
+      console.log(`📋 Using fallback content types: ${fallbackContentTypes.join(', ')}`);
+      
+      return { selectedTools: validFallbackTools, selectedContentTypes: fallbackContentTypes };
     }
   }
 
   /**
-   * Execute selected tools and gather data
+   * Legacy tool selection - kept for backward compatibility
+   */
+  private static async selectToolsWithLLM(userQuery: string, availableTools: any[]): Promise<any[]> {
+    // CRITICAL SECURITY: Filter out ALL modification tools
+    const safeTools = this.filterReadOnlyTools(availableTools);
+    
+    const toolDescriptions = safeTools.map(tool => ({
+      name: tool.name,
+      description: tool.description
+    }));
+    
+    console.log("🔒 Safe read-only tools:", toolDescriptions);
+    
+    const systemMessage = `You are a READ-ONLY content retrieval system for ContentStack CMS. 
+
+🚫 ABSOLUTELY FORBIDDEN - NEVER SELECT TOOLS THAT:
+- CREATE, UPDATE, DELETE, or MODIFY any content
+- PUBLISH, UNPUBLISH, or DEPLOY content
+- ADD, REMOVE, MERGE, or ALTER data in any way
+- LOCALIZE, UNLOCALIZE, or change content structure
+
+✅ ONLY SELECT READ-ONLY TOOLS THAT:
+- GET, RETRIEVE, FETCH, or READ existing content
+- LIST, VIEW, or DISPLAY information
+- EXPORT data for viewing (not modification)
+
+Available READ-ONLY tools:
+${JSON.stringify(toolDescriptions, null, 2)}
+
+QUERY: "${userQuery}"
+
+🔒 SAFETY RULES:
+- This is a READ-ONLY system for content display only
+- NEVER select tools that modify ContentStack data
+- Select 1-3 most relevant GET/READ tools only
+- Return ONLY a JSON array: ["tool_name1", "tool_name2"]
+
+Selection Guidelines:
+- Recent/latest content → ["get_all_entries"] (with proper sorting)
+- Blog posts → ["get_all_entries"] 
+- Images/media → ["get_all_entries", "get_all_assets"]
+- Content types → ["get_all_content_types"]
+- Specific content → ["get_single_entry"] or ["get_all_entries"]
+
+RESPOND WITH ONLY THE JSON ARRAY OF READ-ONLY TOOLS:`;
+
+    try {
+      const result = await groq.sendToGroq(
+        [
+          { role: "system", content: systemMessage },
+          { role: "user", content: `Return JSON array for: ${userQuery}` },
+        ],
+        "llama-3.1-8b-instant"
+      );
+
+      let responseContent = result.content || '[]';
+      console.log(`🤖 LLM tool selection raw response: "${responseContent}"`);
+
+      // Extract JSON array from response if it contains extra text
+      let jsonMatch = responseContent.match(/\[[\s\S]*?\]/);
+      if (jsonMatch) {
+        responseContent = jsonMatch[0];
+      } else {
+        // If no array found, try to extract tool names mentioned
+        console.warn('No JSON array found in LLM response, attempting to extract tool names');
+        const toolNames = availableTools.map(t => t.name);
+        const mentionedTools = toolNames.filter(name => responseContent.toLowerCase().includes(name.toLowerCase()));
+        responseContent = JSON.stringify(mentionedTools.slice(0, 3));
+      }
+
+      console.log(`🤖 Extracted JSON: "${responseContent}"`);
+      const selectedToolNames = JSON.parse(responseContent);
+      
+      if (!Array.isArray(selectedToolNames)) {
+        throw new Error('Response is not an array');
+      }
+
+      const selectedTools = availableTools.filter(tool => selectedToolNames.includes(tool.name));
+      console.log(`🎯 Selected tools: ${selectedTools.map(t => t.name).join(', ')}`);
+      
+      return selectedTools;
+    } catch (error) {
+      console.error('LLM tool selection failed, using fallback:', error);
+      
+      // CRITICAL SECURITY: Use only filtered safe tools for fallback
+      const safeTools = this.filterReadOnlyTools(availableTools);
+      
+      // Intelligent fallback based on query patterns - READ-ONLY ONLY
+      const query = userQuery.toLowerCase();
+      let fallbackTools: any[] = [];
+      
+      if (query.includes('recent') || query.includes('latest') || query.includes('newest')) {
+        fallbackTools = [
+          safeTools.find(t => t.name === 'get_all_entries')
+        ];
+      } else if (query.includes('blog') || query.includes('post') || query.includes('article')) {
+        fallbackTools = [
+          safeTools.find(t => t.name === 'get_all_entries')
+        ];
+      } else if (query.includes('image') || query.includes('photo') || query.includes('media') || query.includes('gallery')) {
+        fallbackTools = [
+          safeTools.find(t => t.name === 'get_all_entries'),
+          safeTools.find(t => t.name === 'get_all_assets')
+        ];
+      } else if (query.includes('content type') || query.includes('structure') || query.includes('schema')) {
+        fallbackTools = [
+          safeTools.find(t => t.name === 'get_all_content_types')
+        ];
+      } else {
+        // Default comprehensive fallback - READ-ONLY ONLY
+        fallbackTools = [
+          safeTools.find(t => t.name === 'get_all_content_types'),
+          safeTools.find(t => t.name === 'get_all_entries'),
+          safeTools.find(t => t.name === 'get_all_assets')
+        ];
+      }
+      
+      const validFallbackTools = fallbackTools.filter(Boolean);
+      console.log(`� Using SAFE READ-ONLY fallback tools: ${validFallbackTools.map(t => t?.name).join(', ')}`);
+      return validFallbackTools;
+    }
+  }
+
+  /**
+   * Execute selected tools with content-type awareness
+   */
+  private static async executeSelectedToolsWithContentTypes(
+    selectedTools: any[], 
+    selectedContentTypes: string[]
+  ): Promise<any> {
+    const results: any = {};
+
+    for (const tool of selectedTools) {
+      try {
+        if (tool.name === 'get_all_content_types') {
+          // Execute get_all_content_types normally
+          const params = { branch: 'main' };
+          const activeInstances = contentStackMCPManager.getActiveInstances();
+          const mcpInstance = activeInstances.values().next().value;
+          if (mcpInstance) {
+            const result = await mcpInstance.sendRequest('tools/call', {
+              name: tool.name,
+              arguments: params
+            });
+            results[tool.name] = result;
+          }
+        } else if (tool.name === 'get_all_entries') {
+          // Execute get_all_entries for EACH selected content type
+          for (const contentType of selectedContentTypes) {
+            const params = {
+              content_type_uid: contentType,
+              limit: '10',
+              include_count: true,
+              branch: 'main'
+            };
+
+            const activeInstances = contentStackMCPManager.getActiveInstances();
+            const mcpInstance = activeInstances.values().next().value;
+            if (mcpInstance) {
+              const result = await mcpInstance.sendRequest('tools/call', {
+                name: tool.name,
+                arguments: params
+              });
+              
+              // Store results with content type suffix for clarity
+              const resultKey = `get_all_entries_${contentType}`;
+              results[resultKey] = result;
+              console.log(`📊 Executed get_all_entries for content type: ${contentType}`);
+            }
+          }
+        } else if (tool.name === 'get_all_assets') {
+          // Execute get_all_assets normally (we'll enhance this later for folders)
+          const params = {
+            limit: '10',
+            include_count: true,
+            branch: 'main'
+          };
+
+          const activeInstances = contentStackMCPManager.getActiveInstances();
+          const mcpInstance = activeInstances.values().next().value;
+          if (mcpInstance) {
+            const result = await mcpInstance.sendRequest('tools/call', {
+              name: tool.name,
+              arguments: params
+            });
+            results[tool.name] = result;
+          }
+        } else {
+          // Execute other tools normally
+          let params: any = {};
+          
+          if (tool.name === 'get_all_environments') {
+            params = { include_count: true };
+          }
+
+          const activeInstances = contentStackMCPManager.getActiveInstances();
+          const mcpInstance = activeInstances.values().next().value;
+          if (mcpInstance) {
+            const result = await mcpInstance.sendRequest('tools/call', {
+              name: tool.name,
+              arguments: params
+            });
+            results[tool.name] = result;
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to execute tool ${tool.name}:`, error);
+        results[tool.name] = { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        };
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Legacy tool execution - kept for backward compatibility
    */
   private static async executeSelectedTools(selectedTools: any[]): Promise<any> {
     const results: any = {};
@@ -755,10 +1213,17 @@ Return ONLY a JSON array of tool names: ["tool1", "tool2", "tool3"]`;
     sessionId?: string
   ): Promise<void> {
     
-    // Same enhanced system context as non-streaming version
-    let systemContext = `You are a helpful AI assistant for this website. Your role is to help visitors find information and answer questions using only the actual content and data from this website.
+    // READ-ONLY system context - emphasizes no modification capabilities
+    let systemContext = `You are a READ-ONLY AI assistant for this website. Your role is to help visitors find and view existing content ONLY.
 
-🔒 GUARDRAILS:
+🔒 CRITICAL READ-ONLY RESTRICTIONS:
+- You are a READ-ONLY system that can ONLY display existing content
+- You CANNOT and MUST NOT create, update, delete, publish, or modify ANY content
+- You can ONLY retrieve and show information that already exists on this website
+- NEVER suggest actions that would modify, add, or change website content
+- If users ask to create, update, or modify content, explain this is not possible
+
+🔒 CONTENT GUARDRAILS:
 - ONLY use information from the provided website content data
 - NEVER invent, assume, or hallucinate information not present in the data
 - If information is not available in the provided data, clearly state this limitation
@@ -767,8 +1232,8 @@ Return ONLY a JSON array of tool names: ["tool1", "tool2", "tool3"]`;
 - Do NOT discuss ContentStack, CMS, or technical backend details
 - Focus ONLY on the website's actual content, products, services, or information
 
-🎯 YOUR MISSION:
-You have access to real, live content from this website. Use this data to provide accurate, helpful responses about what's available on this website - not about the technology behind it.
+🎯 YOUR READ-ONLY MISSION:
+You have access to real, live content from this website for VIEWING purposes only. Use this data to provide accurate, helpful responses about what's available on this website - you cannot modify or create anything.
 
 🖼️ MEDIA CONTENT HANDLING:
 - When users ask about images, photos, or visual content - SHOW the actual images using ![alt](url) format
@@ -850,14 +1315,23 @@ You have access to real, live content from this website. Use this data to provid
       systemContext = systemContext.substring(0, targetLength) + '\n\n[Context truncated to prevent token overflow]';
     }
 
-    systemContext += `\n\n📋 RESPONSE GUIDELINES:
+    systemContext += `\n\n📋 READ-ONLY RESPONSE GUIDELINES:
 - Provide concise, accurate answers based EXCLUSIVELY on the website content above
+- This is a READ-ONLY system - you can ONLY show existing content, NEVER create, update, or modify anything
+- If users ask to create, update, edit, delete, or modify content, respond: "I can only help you find and view existing content on this website. I cannot create, update, or modify any content."
 - Talk about the website's content, products, services, or information - NOT about ContentStack or CMS
 - If asked about anything not related to this website's content, politely redirect: "I'm here to help with information about this website. What would you like to know about our content?"
 - Reference specific details, links, or information found in the actual website data
 - If asked about products, services, or content not in the data, say "I don't have that information available on this website"
 - Keep responses conversational but professional - you're representing this website
 - For general questions (math, weather, etc.), say: "I can only help with questions about this website's content"
+
+🚫 STRICTLY FORBIDDEN ACTIONS:
+- Do NOT suggest creating, editing, updating, or deleting any content
+- Do NOT offer to publish, unpublish, or modify existing content
+- Do NOT provide instructions on how to add or change website content
+- Do NOT mention capabilities to modify the CMS or website structure
+- ONLY focus on displaying and finding existing content
 
 🔍 CONTENT DISPLAY PRIORITIES:
 - **Images/Photos**: When users ask about images or visual content, ALWAYS display actual images using ![alt](url)
@@ -901,30 +1375,30 @@ You have access to real, live content from this website. Use this data to provid
 - Use line breaks to separate different topics or sections
 - When showing multiple content items, organize them with clear headings and visual separation`;
 
+    // Build messages array with conversation history - declare outside try block for fallback access
+    const messages: CleanMessage[] = [
+      { role: 'system' as const, content: systemContext }
+    ];
+
+    // Add conversation history if session exists
+    if (sessionId) {
+      const conversationHistory = conversationMemory.getFormattedConversation(sessionId, 8); // Last 8 messages for context
+      console.log(`💭 Including ${conversationHistory.length} previous messages for streaming context`);
+      
+      conversationHistory.forEach(msg => {
+        messages.push({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content
+        });
+      });
+    }
+
+    // Add current user query
+    messages.push({ role: 'user' as const, content: userQuery });
+
     try {
       console.log(`🎯 Generating streaming response with ${responseProvider}:${responseModel}`);
       
-      // Build messages array with conversation history
-      const messages: CleanMessage[] = [
-        { role: 'system' as const, content: systemContext }
-      ];
-
-      // Add conversation history if session exists
-      if (sessionId) {
-        const conversationHistory = conversationMemory.getFormattedConversation(sessionId, 8); // Last 8 messages for context
-        console.log(`💭 Including ${conversationHistory.length} previous messages for streaming context`);
-        
-        conversationHistory.forEach(msg => {
-          messages.push({
-            role: msg.role as 'user' | 'assistant',
-            content: msg.content
-          });
-        });
-      }
-
-      // Add current user query
-      messages.push({ role: 'user' as const, content: userQuery });
-
       // Use streaming with fallback support
       await llm.sendMessageStreamWithFallback(
         messages,
@@ -935,7 +1409,28 @@ You have access to real, live content from this website. Use this data to provid
 
     } catch (error) {
       console.error('Enhanced AI streaming response generation failed:', error);
-      onChunk('I apologize, but I\'m having trouble processing your request right now. Please try asking your question in a different way, or contact our support team if you need immediate assistance.');
+      
+      // Fallback to non-streaming response
+      try {
+        console.log('🔄 Attempting fallback to non-streaming response...');
+        
+        const result = await llm.sendMessageWithFallback(
+          messages,
+          responseProvider,
+          responseModel
+        );
+        
+        if (result?.content) {
+          console.log('✅ Non-streaming fallback successful');
+          onChunk(result.content);
+        } else {
+          throw new Error('Non-streaming fallback returned no content');
+        }
+        
+      } catch (fallbackError) {
+        console.error('Non-streaming fallback also failed:', fallbackError);
+        onChunk('I apologize, but I\'m having trouble processing your request right now. Please try asking your question in a different way, or contact our support team if you need immediate assistance.');
+      }
     }
   }
 
