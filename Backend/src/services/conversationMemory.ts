@@ -27,8 +27,8 @@ export class ConversationMemoryService {
   
   // Configuration
   private readonly MAX_MESSAGES_PER_SESSION = 50; // Prevent memory bloat
-  private readonly SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-  private readonly CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly SESSION_TIMEOUT_MS = 300 * 60 * 1000; // 30 minutes
+  private readonly CLEANUP_INTERVAL_MS = 180 * 60 * 1000; // 20 minutes
 
   private constructor() {
     // Start automatic cleanup of expired sessions

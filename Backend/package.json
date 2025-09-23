@@ -13,6 +13,7 @@
   "dependencies": {
     "@contentstack/mcp": "^0.2.0",
     "@modelcontextprotocol/sdk": "^1.18.0",
+    "@types/redis": "^4.0.10",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
@@ -24,7 +25,8 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.1",
-    "openai": "^5.19.1"
+    "openai": "^5.19.1",
+    "redis": "^5.8.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

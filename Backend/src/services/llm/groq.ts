@@ -12,6 +12,44 @@ const GROQ_MODELS = [
   'gemma2-9b-it'
 ];
 
+// Groq rate limits based on official documentation
+const GROQ_LIMITS = {
+  'llama-3.1-8b-instant': {
+    RPM: 30,        // Requests per minute
+    RPD: 14400,     // Requests per day  
+    TPM: 6000,      // Tokens per minute
+    TPD: 500000,    // Tokens per day
+    maxTokensPerRequest: 2000  // Conservative limit to stay under TPM
+  },
+  'llama-3.1-70b-versatile': {
+    RPM: 30,
+    RPD: 14400, 
+    TPM: 6000,
+    TPD: 500000,
+    maxTokensPerRequest: 2000
+  },
+  'gemma2-9b-it': {
+    RPM: 30,
+    RPD: 14400,
+    TPM: 15000,
+    TPD: 500000, 
+    maxTokensPerRequest: 4000
+  },
+  // Default for unknown models
+  default: {
+    RPM: 30,
+    RPD: 14400,
+    TPM: 6000, 
+    TPD: 500000,
+    maxTokensPerRequest: 2000
+  }
+};
+
+// Get limits for a specific model
+export function getGroqLimits(model: string) {
+  return GROQ_LIMITS[model as keyof typeof GROQ_LIMITS] || GROQ_LIMITS.default;
+}
+
 // Check if Groq is configured
 export function isGroqAvailable(): boolean {
   return !!process.env.GROQ_API_KEY;
@@ -84,13 +122,17 @@ export async function sendToGroqStream(
     throw new Error('GROQ_API_KEY not configured');
   }
 
-  // Check payload size - Groq has limits around 8K tokens for most models
+  // Get model-specific limits
+  const limits = getGroqLimits(model);
   const estimatedTokens = estimateTokens(messages);
-  console.log(`🔍 Groq payload size check: ~${estimatedTokens} tokens`);
   
-  if (estimatedTokens > 7000) {
-    console.log(`⚠️ Payload too large for Groq streaming (${estimatedTokens} tokens > 7000), rejecting`);
-    throw new Error(`Payload too large for Groq streaming: ${estimatedTokens} tokens`);
+  console.log(`🔍 Groq payload size check for ${model}: ~${estimatedTokens} tokens (limit: ${limits.maxTokensPerRequest})`);
+  console.log(`📊 Model limits - RPM: ${limits.RPM}, TPM: ${limits.TPM}, TPD: ${limits.TPD}`);
+  
+  if (estimatedTokens > limits.maxTokensPerRequest) {
+    console.log(`⚠️ Payload too large for Groq ${model} (${estimatedTokens} tokens > ${limits.maxTokensPerRequest})`);
+    console.log(`💡 Consider: TPM limit is ${limits.TPM} tokens/minute, this request would consume ${Math.round((estimatedTokens / limits.TPM) * 100)}% of minute quota`);
+    throw new Error(`Payload too large for Groq ${model}: ${estimatedTokens} tokens exceeds ${limits.maxTokensPerRequest} limit`);
   }
 
   try {

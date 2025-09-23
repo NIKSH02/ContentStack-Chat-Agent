@@ -1,4 +1,5 @@
 import { ContentStackMCPService, contentStackMCPManager } from './contentstackMCP';
+import { redisCacheService } from './redisCache';
 import * as groq from './llm/groq';
 import * as llm from './llm';  // Full LLM service for user provider choice
 import { CleanMessage, LLMResult } from '../types';
@@ -64,16 +65,48 @@ export class ContentStackAIService {
 
       const mcpService = contentStackMCPManager.getInstance(query.tenantId, mcpConfig);
 
-      // Step 2: Start MCP server if not connected
-      if (!mcpService.isServerConnected()) {
-        onStatus('⚡ Starting content service...');
-        await mcpService.startMCPServer();
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      // Step 2: Ensure MCP server is properly connected and validated
+      onStatus('⚡ Starting content service...');
+      
+      // Always restart MCP server to avoid stale connections
+      if (mcpService.isServerConnected()) {
+        console.log('🔄 Restarting MCP server to ensure fresh connection...');
+        await mcpService.stopMCPServer();
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for cleanup
+      }
+      
+      await mcpService.startMCPServer();
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Longer wait for stability
+      
+      // Validate MCP server is working by testing tools list
+      try {
+        const testResult = await mcpService.sendRequest('tools/list', {});
+        if (!testResult.success) {
+          throw new Error('MCP server validation failed');
+        }
+        console.log('✅ MCP server validation successful');
+      } catch (error) {
+        console.error('❌ MCP server validation failed:', error);
+        throw new Error('MCP server not responding properly');
       }
 
-      // Step 3: Get available tools for intelligent selection
+      // Step 3: Get available tools for intelligent selection (with caching)
       onStatus('🛠️ Loading content tools...');
-      const toolsResult = await mcpService.listAvailableTools();
+      
+      // 🚀 Try cache first, fallback to MCP if not found
+      let toolsResult: any;
+      const cachedTools = await redisCacheService.get(query.tenantId, query.apiKey, 'tools_list');
+      
+      if (cachedTools) {
+        toolsResult = { success: true, data: cachedTools };
+        console.log('🎯 Using cached tools list');
+      } else {
+        toolsResult = await mcpService.listAvailableTools();
+        // Cache successful result
+        if (toolsResult.success && toolsResult.data) {
+          redisCacheService.set(query.tenantId, query.apiKey, 'tools_list', toolsResult.data);
+        }
+      }
       if (!toolsResult.success) {
         const errorMsg = `I'm having trouble connecting to ContentStack. This might be due to an invalid Stack API key or network issues. Error: ${toolsResult.error || 'Unknown error'}. Please check your API key and try again.`;
         console.error('Tools list failed:', toolsResult.error);
@@ -81,19 +114,36 @@ export class ContentStackAIService {
         return;
       }
 
-      // Step 4: Get content types FIRST for intelligent content-aware selection
+      // Step 4: Get content types FIRST for intelligent content-aware selection (with caching)
       onStatus('📋 Analyzing content structure...');
       let contentTypes: any[] = [];
       try {
-        const contentTypesResult = await mcpService.sendRequest('tools/call', {
-          name: 'get_all_content_types',
-          arguments: { branch: 'main' }
-        });
+        // 🚀 Try cache first, fallback to MCP if not found
+        let contentTypesResult: any;
+        const cachedContentTypes = await redisCacheService.get(query.tenantId, query.apiKey, 'get_all_content_types');
+        
+        if (cachedContentTypes) {
+          contentTypesResult = { success: true, data: cachedContentTypes };
+          console.log('🎯 Using cached content types');
+        } else {
+          contentTypesResult = await mcpService.sendRequest('tools/call', {
+            name: 'get_all_content_types',
+            arguments: { branch: 'main' }
+          });
+          console.log('🔍 Raw content types response:', JSON.stringify(contentTypesResult, null, 2));
+          // Cache successful result
+          if (contentTypesResult.success && contentTypesResult.data) {
+            redisCacheService.set(query.tenantId, query.apiKey, 'get_all_content_types', contentTypesResult.data);
+          }
+        }
         
         if (contentTypesResult.success && contentTypesResult.data) {
           // Parse content types data
           let contentTypesData = contentTypesResult.data;
+          console.log('🔍 Content types data structure:', JSON.stringify(contentTypesData, null, 2));
+          
           if (contentTypesData.content && Array.isArray(contentTypesData.content)) {
+            console.log('🔍 Found content array with', contentTypesData.content.length, 'items');
             try {
               contentTypes = contentTypesData.content.map((item: any) => {
                 if (item.type === 'text' && item.text) {
@@ -105,10 +155,16 @@ export class ContentStackAIService {
                 }
                 return item;
               });
+              console.log('🔍 Mapped content types:', contentTypes);
               contentTypes = contentTypes[0]?.content_types || contentTypes;
+              console.log('🔍 Final content types after extraction:', contentTypes);
             } catch (e) {
+              console.log('🔍 Error parsing content, using fallback:', e);
               contentTypes = contentTypesData.content_types || [];
             }
+          } else {
+            console.log('🔍 No content array found, checking for direct content_types');
+            contentTypes = contentTypesData.content_types || [];
           }
         }
         console.log(`📋 Found ${contentTypes.length} content types:`, contentTypes.map((ct: any) => ct.uid || ct.name).join(', '));
@@ -132,7 +188,7 @@ export class ContentStackAIService {
       onStatus('📊 Gathering content data...');
       let multiToolData;
       try {
-        multiToolData = await this.executeSelectedToolsWithContentTypes(selectedTools, selectedContentTypes);
+        multiToolData = await this.executeSelectedToolsWithContentTypes(selectedTools, selectedContentTypes, query.tenantId, query.apiKey, mcpService);
         console.log(`📊 Executed tools, results:`, Object.keys(multiToolData));
       } catch (error: any) {
         console.warn('Multi-tool execution failed, trying fallback:', error.message);
@@ -163,6 +219,9 @@ export class ContentStackAIService {
       }
 
       // Check if we have any meaningful data
+      console.log('🔍 Debug - multiToolData:', Object.keys(multiToolData || {}));
+      console.log('🔍 Debug - first tool result:', multiToolData ? multiToolData[Object.keys(multiToolData)[0]] : 'no data');
+      
       const hasValidData = multiToolData && Object.keys(multiToolData).some(key => 
         multiToolData[key] && multiToolData[key].success && multiToolData[key].data
       );
@@ -476,7 +535,31 @@ I'm designed to help you find information about this website's content, products
         return jsonString;
       }
 
-      console.log(`📊 Large content detected (${this.estimateTokens(jsonString)} tokens), summarizing...`);
+      console.log(`📊 Large content detected (${this.estimateTokens(jsonString)} tokens), summarizing for ${maxTokens} token limit...`);
+
+      // For very small limits (Groq with 6K TPM), use ultra-compact format
+      if (maxTokens <= 300) {
+        let ultraCompact = '';
+        
+        if (data.content_types && Array.isArray(data.content_types)) {
+          const types = data.content_types.slice(0, 3).map((ct: any) => ct.title || ct.uid).join(', ');
+          ultraCompact += `Types[${data.content_types.length}]: ${types}${data.content_types.length > 3 ? '...' : ''}; `;
+        }
+        
+        if (data.entries && Array.isArray(data.entries)) {
+          const entries = data.entries.slice(0, 2).map((e: any) => e.title || e.uid || 'Entry').join(', ');
+          ultraCompact += `Entries[${data.entries.length}]: ${entries}${data.entries.length > 2 ? '...' : ''}; `;
+        }
+        
+        if (data.assets && Array.isArray(data.assets)) {
+          const assets = data.assets.slice(0, 2).map((a: any) => a.title || a.filename || 'Asset').join(', ');
+          ultraCompact += `Assets[${data.assets.length}]: ${assets}${data.assets.length > 2 ? '...' : ''}`;
+        }
+        
+        const result = ultraCompact.trim() || 'Content available but too large to display';
+        console.log(`🔥 Ultra-compact format: ${result} (${this.estimateTokens(result)} tokens)`);
+        return result;
+      }
 
       // Build a smart summary instead of raw JSON dump
       let summary = '';
@@ -925,89 +1008,219 @@ RESPOND WITH ONLY THE JSON ARRAY OF READ-ONLY TOOLS:`;
    */
   private static async executeSelectedToolsWithContentTypes(
     selectedTools: any[], 
-    selectedContentTypes: string[]
+    selectedContentTypes: string[],
+    tenantId: string,
+    apiKey: string,
+    mcpService: ContentStackMCPService
   ): Promise<any> {
     const results: any = {};
 
+    // ✅ SIMPLE CACHING: Keep original logic, just add cache layer
     for (const tool of selectedTools) {
       try {
         if (tool.name === 'get_all_content_types') {
-          // Execute get_all_content_types normally
-          const params = { branch: 'main' };
-          const activeInstances = contentStackMCPManager.getActiveInstances();
-          const mcpInstance = activeInstances.values().next().value;
-          if (mcpInstance) {
-            const result = await mcpInstance.sendRequest('tools/call', {
-              name: tool.name,
-              arguments: params
-            });
-            results[tool.name] = result;
+          // Check cache first
+          const cached = await redisCacheService.get(tenantId, apiKey, 'get_all_content_types');
+          if (cached) {
+            results[tool.name] = { success: true, data: cached };
+            console.log('🎯 Cache HIT: get_all_content_types');
+          } else {
+            // Original MCP logic using the specific service instance
+            const params = { branch: 'main' };
+            if (mcpService) {
+              const result = await mcpService.sendRequest('tools/call', {
+                name: tool.name,
+                arguments: params
+              });
+              results[tool.name] = result;
+              // Cache successful result
+              if (result.success && result.data) {
+                redisCacheService.set(tenantId, apiKey, 'get_all_content_types', result.data);
+              }
+            } else {
+              console.error(`❌ No MCP service available for ${tool.name}`);
+              results[tool.name] = {
+                success: false,
+                error: 'No MCP service available'
+              };
+            }
           }
         } else if (tool.name === 'get_all_entries') {
           // Execute get_all_entries for EACH selected content type
           for (const contentType of selectedContentTypes) {
+            const cacheKey = `get_all_entries_${contentType}`;
+            const cached = await redisCacheService.get(tenantId, apiKey, cacheKey);
+            
+            if (cached) {
+              results[`get_all_entries_${contentType}`] = { success: true, data: cached };
+              console.log(`🎯 Cache HIT: get_all_entries_${contentType}`);
+            } else {
+              // Original MCP logic
+              const params = {
+                content_type_uid: contentType,
+                limit: '10',
+                include_count: true,
+                branch: 'main'
+              };
+
+              // Use the specific MCP service instance for this request
+              if (mcpService) {
+                console.log(`🔍 Sending MCP request for get_all_entries with content_type: ${contentType}`);
+                const result = await mcpService.sendRequest('tools/call', {
+                  name: tool.name,
+                  arguments: params
+                });
+                
+                console.log(`🔍 MCP Response for ${contentType}:`, JSON.stringify(result, null, 2));
+                
+                // Store results with content type suffix for clarity
+                const resultKey = `get_all_entries_${contentType}`;
+                results[resultKey] = result;
+                console.log(`📊 Executed get_all_entries for content type: ${contentType}`);
+                
+                // Cache successful result
+                if (result.success && result.data) {
+                  redisCacheService.set(tenantId, apiKey, cacheKey, result.data);
+                }
+              } else {
+                console.error(`❌ No MCP service available for get_all_entries_${contentType}`);
+                results[`get_all_entries_${contentType}`] = {
+                  success: false,
+                  error: 'No MCP service available'
+                };
+              }
+            }
+          }
+        } else if (tool.name === 'get_all_assets') {
+          // Check cache first
+          const cached = await redisCacheService.get(tenantId, apiKey, 'get_all_assets');
+          if (cached) {
+            results[tool.name] = { success: true, data: cached };
+            console.log('🎯 Cache HIT: get_all_assets');
+          } else {
+            // Original MCP logic  
             const params = {
-              content_type_uid: contentType,
               limit: '10',
               include_count: true,
               branch: 'main'
             };
 
-            const activeInstances = contentStackMCPManager.getActiveInstances();
-            const mcpInstance = activeInstances.values().next().value;
-            if (mcpInstance) {
-              const result = await mcpInstance.sendRequest('tools/call', {
+            // Use the specific MCP service instance for this request
+            if (mcpService) {
+              const result = await mcpService.sendRequest('tools/call', {
                 name: tool.name,
                 arguments: params
               });
-              
-              // Store results with content type suffix for clarity
-              const resultKey = `get_all_entries_${contentType}`;
-              results[resultKey] = result;
-              console.log(`📊 Executed get_all_entries for content type: ${contentType}`);
+              results[tool.name] = result;
+              // Cache successful result
+              if (result.success && result.data) {
+                redisCacheService.set(tenantId, apiKey, 'get_all_assets', result.data);
+              }
+            } else {
+              console.error(`❌ No MCP service available for ${tool.name}`);
+              results[tool.name] = {
+                success: false,
+                error: 'No MCP service available'
+              };
             }
           }
-        } else if (tool.name === 'get_all_assets') {
-          // Execute get_all_assets normally (we'll enhance this later for folders)
-          const params = {
-            limit: '10',
-            include_count: true,
-            branch: 'main'
-          };
-
-          const activeInstances = contentStackMCPManager.getActiveInstances();
-          const mcpInstance = activeInstances.values().next().value;
-          if (mcpInstance) {
-            const result = await mcpInstance.sendRequest('tools/call', {
-              name: tool.name,
-              arguments: params
-            });
-            results[tool.name] = result;
-          }
         } else {
-          // Execute other tools normally
-          let params: any = {};
-          
-          if (tool.name === 'get_all_environments') {
-            params = { include_count: true };
-          }
+          // Check cache first for other tools
+          const cached = await redisCacheService.get(tenantId, apiKey, tool.name);
+          if (cached) {
+            results[tool.name] = { success: true, data: cached };
+            console.log(`🎯 Cache HIT: ${tool.name}`);
+          } else {
+            // Original MCP logic
+            let params: any = {};
+            
+            if (tool.name === 'get_all_environments') {
+              params = { include_count: true };
+            }
 
-          const activeInstances = contentStackMCPManager.getActiveInstances();
-          const mcpInstance = activeInstances.values().next().value;
-          if (mcpInstance) {
-            const result = await mcpInstance.sendRequest('tools/call', {
-              name: tool.name,
-              arguments: params
-            });
-            results[tool.name] = result;
+            // Use the specific MCP service instance for this request
+            if (mcpService) {
+              const result = await mcpService.sendRequest('tools/call', {
+                name: tool.name,
+                arguments: params
+              });
+              results[tool.name] = result;
+              // Cache successful result
+              if (result.success && result.data) {
+                redisCacheService.set(tenantId, apiKey, tool.name, result.data);
+              }
+            } else {
+              console.error(`❌ No MCP service available for ${tool.name}`);
+              results[tool.name] = {
+                success: false,
+                error: 'No MCP service available'
+              };
+            }
           }
         }
       } catch (error) {
-        console.error(`Failed to execute tool ${tool.name}:`, error);
-        results[tool.name] = { 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        };
+        console.error(`❌ Failed to execute tool ${tool.name}:`, error);
+        console.error(`❌ Error stack:`, error instanceof Error ? error.stack : error);
+        
+        // Check if this is a "Cannot read properties of undefined" error which indicates MCP server issues
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isUndefinedPropertyError = errorMessage.includes('Cannot read properties of undefined') || 
+                                       errorMessage.includes('reading \'get_all_entries\'') ||
+                                       errorMessage.includes('reading \'get_all_content_types\'');
+        
+        if (isUndefinedPropertyError && mcpService) {
+          console.log('🔄 Detected MCP server undefined property error, attempting restart...');
+          try {
+            // Force restart the MCP server
+            await mcpService.stopMCPServer();
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            await mcpService.startMCPServer();
+            
+            // Test that the server is working
+            console.log('🧪 Testing MCP server after restart...');
+            await mcpService.sendRequest('tools/list', {});
+            console.log('✅ MCP server restart successful, retrying tool execution...');
+            
+            // Retry the tool execution once
+            let params: any = {};
+            if (tool.name === 'get_all_environments') {
+              params = { include_count: true };
+            } else if (tool.name === 'get_all_content_types') {
+              params = { branch: 'main' };
+            }
+            
+            const retryResult = await mcpService.sendRequest('tools/call', {
+              name: tool.name,
+              arguments: params
+            });
+            
+            results[tool.name] = retryResult;
+            // Cache successful retry result
+            if (retryResult.success && retryResult.data) {
+              redisCacheService.set(tenantId, apiKey, tool.name, retryResult.data);
+            }
+            console.log(`✅ Tool ${tool.name} executed successfully after MCP restart`);
+            continue; // Skip the error handling below
+          } catch (restartError) {
+            console.error('❌ Failed to restart MCP server and retry:', restartError);
+            // Fall through to original error handling
+          }
+        }
+        
+        // Handle get_all_entries failures for each content type
+        if (tool.name === 'get_all_entries') {
+          for (const contentType of selectedContentTypes) {
+            results[`get_all_entries_${contentType}`] = { 
+              success: false, 
+              error: `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+            };
+          }
+        } else {
+          results[tool.name] = { 
+            success: false, 
+            error: `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          };
+        }
       }
     }
 
@@ -1245,8 +1458,12 @@ You have access to real, live content from this website for VIEWING purposes onl
     // Build comprehensive context from multiple tool results with smart truncation
     const contextParts: string[] = [];
     let totalEstimatedTokens = this.estimateTokens(systemContext);
-    const MAX_CONTEXT_TOKENS = 120000; // Leave room for response and conversation history
-    const MAX_DATA_TOKENS = 80000; // Reserve most space for content data
+    
+    // Provider-specific token limits based on actual Groq rate limits
+    // Groq llama-3.1-8b-instant: 6K TPM, 30 RPM - very restrictive!
+    const isGroqProvider = responseProvider === 'groq';
+    const MAX_CONTEXT_TOKENS = isGroqProvider ? 2000 : 120000; // Groq: stay under 2K to avoid TPM issues
+    const MAX_DATA_TOKENS = isGroqProvider ? 1200 : 80000; // Groq: ultra-conservative for 6K TPM limit
     
     console.log(`📊 Starting context building with ${Object.keys(multiToolData).length} tool results`);
     
@@ -1274,8 +1491,13 @@ You have access to real, live content from this website for VIEWING purposes onl
         // Process content for better media handling
         const processedContent = this.processContentForMediaHandling(dataContent);
         
-        // Smart summarization instead of raw JSON dump
-        const summarizedContent = this.summarizeContentData(processedContent, Math.min(15000, MAX_DATA_TOKENS / Object.keys(multiToolData).length));
+        // Smart summarization with provider-specific limits
+        // Groq: Ultra-compact due to 6K TPM limit, Others: Normal detailed summaries
+        const perToolTokenLimit = isGroqProvider ? 
+          Math.min(200, MAX_DATA_TOKENS / Object.keys(multiToolData).length) : // Groq: 200 tokens max per tool
+          Math.min(15000, MAX_DATA_TOKENS / Object.keys(multiToolData).length);
+          
+        const summarizedContent = this.summarizeContentData(processedContent, perToolTokenLimit);
         const contextPart = `\n=== ${toolName.replace(/_/g, ' ').toUpperCase()} DATA ===\n${summarizedContent}`;
         
         const partTokens = this.estimateTokens(contextPart);
