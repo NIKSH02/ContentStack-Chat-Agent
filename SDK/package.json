@@ -1,0 +1,73 @@
+{
+  "name": "contentstack-chat-widget-sdk",
+  "version": "1.0.7",
+  "description": "React TypeScript SDK for embedding ContentStack AI-powered chat widgets into websites",
+  "type": "module",
+  "main": "./dist/index.umd.js",
+  "module": "./dist/index.es.js", 
+  "types": "./dist/index.d.ts",
+  "style": "./dist/contentstack-chat-widget-sdk.css",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.umd.js"
+    },
+    "./style.css": "./dist/contentstack-chat-widget-sdk.css"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc -p tsconfig.lib.json",
+    "build:types": "tsc -p tsconfig.lib.json --emitDeclarationOnly",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NIKSH02/ContentStack-Chat-Agent.git",
+    "directory": "SDK"
+  },
+  "author": "NIKSH02",
+  "license": "MIT",
+  "keywords": [
+    "contentstack",
+    "chat",
+    "widget",
+    "ai",
+    "react",
+    "typescript",
+    "sdk",
+    "llm",
+    "groq",
+    "gemini"
+  ],
+  "dependencies": {
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "eslint": "^9.33.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.13",
+    "@tailwindcss/vite": "^4.1.13",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.39.1",
+    "vite": "^7.1.2"
+  }
+}
