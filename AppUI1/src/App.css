@@ -1,0 +1,8 @@
+/* App-specific styles - Tailwind will handle most styling */
+.app {
+  min-height: 100vh;
+}
+
+.main-content {
+  min-height: calc(100vh - 64px); /* Account for navbar height */
+}

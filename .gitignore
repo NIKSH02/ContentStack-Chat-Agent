@@ -2,6 +2,6 @@ Frontend/
 .DS_Store
 SDK/
 AppUI/
-AppUI1/
+
 /test-simplified-tools.sh
 backend/test
