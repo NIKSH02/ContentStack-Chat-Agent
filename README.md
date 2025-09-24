@@ -1,5 +1,5 @@
 Currently working on : 
-1.Creating Audiences/Experience in contentstack after analysing the messages 
+1.Creating Audiences/Experience in contentstack after analysing the messages for personalization 
 
 
 # ContentStack Chat Agent 🤖
