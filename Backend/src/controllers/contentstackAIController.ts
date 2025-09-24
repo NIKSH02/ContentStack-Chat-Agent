@@ -16,16 +16,13 @@ export interface ContentStackQueryRequest extends Request {
 
 
 
-/**
- * ContentStack AI Controller
- * Handles API endpoints for AI-powered ContentStack interactions
- */
+
+  // ContentStack AI Controller
+  // Handles API endpoints for AI-powered ContentStack interactions
+
 export class ContentStackAIController {
 
-  /**
-   * Health check for ContentStack AI service
-   * GET /api/contentstack/health
-   */
+
   static async healthCheck(req: Request, res: Response): Promise<void> {
     try {
       res.status(200).json({
@@ -53,10 +50,7 @@ export class ContentStackAIController {
     }
   }
 
-  /**
-   * Process natural language queries with streaming response
-   * POST /api/contentstack/query-stream
-   */
+
   static async processQueryStream(req: ContentStackQueryRequest, res: Response): Promise<void> {
     try {
       const { query, tenantId, apiKey, projectId, context, provider, model, sessionId } = req.body;
@@ -138,10 +132,6 @@ export class ContentStackAIController {
     }
   }
 
-  /**
-   * Cleanup MCP instances (for maintenance)
-   * POST /api/contentstack/cleanup
-   */
   static async cleanup(req: Request, res: Response): Promise<void> {
     try {
       console.log('Starting ContentStack AI cleanup...');

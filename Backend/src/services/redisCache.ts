@@ -1,9 +1,5 @@
 import { createClient, RedisClientType } from 'redis';
 
-/**
- * Simple Redis Cache Service for ContentStack MCP caching
- * Minimal, focused implementation that doesn't change existing logic
- */
 export class RedisCacheService {
   private client: RedisClientType | null = null;
   private isConnected = false;
@@ -12,9 +8,6 @@ export class RedisCacheService {
     this.initializeClient();
   }
 
-  /**
-   * Initialize Redis client
-   */
   private async initializeClient(): Promise<void> {
     try {
       this.client = createClient({
@@ -41,27 +34,18 @@ export class RedisCacheService {
     }
   }
 
-  /**
-   * Generate cache key: mcp:{tenantId}:{apiKey}:{tool}:{branch}
-   */
   private generateKey(tenantId: string, apiKey: string, tool: string, branch: string = 'main'): string {
     const shortApiKey = apiKey.substring(0, 10);
     const sanitizedTool = tool.replace(/[^a-zA-Z0-9_-]/g, '_');
     return `mcp:${tenantId}:${shortApiKey}:${sanitizedTool}:${branch}`;
   }
 
-  /**
-   * Get TTL based on tool type
-   */
   private getTTL(tool: string): number {
     if (tool.includes('tools') || tool.includes('list')) return 24 * 60 * 60; // 24 hours
     if (tool.includes('content_types')) return 45 * 60; // 45 minutes
     return 35 * 60; // 35 minutes for entries/assets
   }
 
-  /**
-   * Get cached data
-   */
   async get(tenantId: string, apiKey: string, tool: string, branch: string = 'main'): Promise<any | null> {
     if (!this.isConnected || !this.client) return null;
 
@@ -81,9 +65,7 @@ export class RedisCacheService {
     }
   }
 
-  /**
-   * Set cached data
-   */
+  // Set cached data - /
   async set(tenantId: string, apiKey: string, tool: string, data: any, branch: string = 'main'): Promise<void> {
     if (!this.isConnected || !this.client || !data) return;
 
@@ -98,9 +80,7 @@ export class RedisCacheService {
     }
   }
 
-  /**
-   * Health check
-   */
+  // Health check - /
   isReady(): boolean {
     return this.isConnected;
   }

@@ -87,9 +87,6 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Generate OAuth authorization URL
-   */
   generateAuthUrl(state?: string): string {
     // ContentStack OAuth scopes - try different scope formats
     // Common ContentStack scopes: 'read', 'read_write', 'cms:read', 'cms:write'
@@ -112,9 +109,6 @@ class ContentStackOAuthService {
     return `${this.baseUrl}/#!/apps/${this.appId}/authorize?${params.toString()}`;
   }
 
-  /**
-   * Exchange authorization code for access token
-   */
   async exchangeCodeForToken(code: string): Promise<ContentStackTokenResponse> {
     try {
       // ContentStack token endpoint - corrected URL format
@@ -154,10 +148,6 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Refresh access token using refresh token
-   * ContentStack requires redirect_uri even for refresh token calls
-   */
   async refreshToken(refreshToken: string): Promise<ContentStackTokenResponse> {
     try {
       const tokenUrl = `${this.baseUrl}/apps-api/token`;
@@ -195,9 +185,6 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Get user information using OAuth access token
-   */
   async getUserInfo(accessToken: string): Promise<ContentStackUserInfo> {
     try {
       // For OAuth tokens, we should use OAuth-compatible APIs or App Framework APIs
@@ -236,9 +223,6 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Get user's projects with stacks using OAuth token
-   */
   async getUserProjects(accessToken: string): Promise<ContentStackProject[]> {
     try {
       // For OAuth tokens from Developer Hub apps, we need to use OAuth-compatible APIs
@@ -334,9 +318,6 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Get specific stack details including delivery tokens, content, and assets
-   */
   async getStackDetails(accessToken: string, stackApiKey: string): Promise<ContentStackStack> {
     try {
       const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
@@ -372,9 +353,7 @@ class ContentStackOAuthService {
     }
   }
 
-  // /**
-  //  * Get delivery tokens for a stack
-  //  */
+  // 
   // async getDeliveryTokens(accessToken: string, stackApiKey: string): Promise<any[]> {
   //   try {
   //     const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
@@ -393,9 +372,6 @@ class ContentStackOAuthService {
   //   }
   // }
 
-  /**
-   * Get content types for a specific stack
-   */
   async getStackContentTypes(accessToken: string, stackApiKey: string): Promise<any[]> {
     try {
       const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
@@ -418,9 +394,6 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Get all entries for a specific stack (with pagination support)
-   */
   async getStackEntries(accessToken: string, stackApiKey: string, limit: number = 100): Promise<any[]> {
     try {
       const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
@@ -458,9 +431,6 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Get all assets for a specific stack (with pagination support)
-   */
   async getStackAssets(accessToken: string, stackApiKey: string, limit: number = 100): Promise<any[]> {
     try {
       const apiBase = this.baseUrl.replace('eu-app.contentstack.com', 'eu-api.contentstack.com');
@@ -497,10 +467,6 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Fetch organization stacks when we have user-level OAuth access
-   * This is used when authorization_type is 'user' and stack_api_key is empty
-   */
   async getOrganizationStacks(accessToken: string, organizationUid: string): Promise<ContentStackStack[]> {
     try {
       console.log(`Fetching stacks for organization ${organizationUid}...`);
@@ -609,9 +575,7 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Validate access token
-   */
+  // Validate access token - /
   async validateToken(accessToken: string): Promise<boolean> {
     try {
       await this.getUserInfo(accessToken);
@@ -621,16 +585,12 @@ class ContentStackOAuthService {
     }
   }
 
-  /**
-   * Extract state from request (for CSRF protection)
-   */
+  // Extract state from request (for CSRF protection) - /
   extractStateFromRequest(req: Request): string | null {
     return req.query.state as string || null;
   }
 
-  /**
-   * Generate state for CSRF protection
-   */
+  // Generate state for CSRF protection - /
   generateState(): string {
     return Buffer.from(`${Date.now()}-${Math.random()}`).toString('base64');
   }

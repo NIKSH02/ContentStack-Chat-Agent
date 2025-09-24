@@ -1,10 +1,8 @@
-/**
- * In-Memory Conversation Memory Service
- * 
- * Manages short-term memory for chat sessions without database persistence.
- * Memory is cleared on server restart and page refresh, perfect for 
- * multi-website chat agents that need to scale.
- */
+  // In-Memory Conversation Memory Service
+  // 
+  // Manages short-term memory for chat sessions without database persistence.
+  // Memory is cleared on server restart and page refresh, perfect for 
+  // multi-website chat agents that need to scale.
 
 export interface ConversationMessage {
   role: 'user' | 'assistant' | 'system';
@@ -46,9 +44,6 @@ export class ConversationMemoryService {
     return ConversationMemoryService.instance;
   }
 
-  /**
-   * Add a message to the conversation history
-   */
   public addMessage(
     sessionId: string, 
     tenantId: string, 
@@ -89,9 +84,6 @@ export class ConversationMemoryService {
     console.log(`💬 Added ${role} message to session ${sessionId.slice(0, 8)}... (${session.messages.length} messages)`);
   }
 
-  /**
-   * Get conversation history for LLM context
-   */
   public getConversationHistory(sessionId: string): ConversationMessage[] {
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -104,9 +96,6 @@ export class ConversationMemoryService {
     return [...session.messages]; // Return copy to prevent external modification
   }
 
-  /**
-   * Get formatted conversation for LLM (recent messages only)
-   */
   public getFormattedConversation(sessionId: string, maxMessages: number = 10): ConversationMessage[] {
     const history = this.getConversationHistory(sessionId);
     
@@ -114,9 +103,6 @@ export class ConversationMemoryService {
     return history.slice(-maxMessages);
   }
 
-  /**
-   * Clear session memory (useful for testing or manual cleanup)
-   */
   public clearSession(sessionId: string): boolean {
     const deleted = this.sessions.delete(sessionId);
     if (deleted) {
@@ -125,23 +111,15 @@ export class ConversationMemoryService {
     return deleted;
   }
 
-  /**
-   * Get current session count (for monitoring)
-   */
   public getActiveSessionCount(): number {
     return this.sessions.size;
   }
 
-  /**
-   * Get session info for debugging
-   */
   public getSessionInfo(sessionId: string): SessionMemory | null {
     return this.sessions.get(sessionId) || null;
   }
 
-  /**
-   * Clean up expired sessions automatically
-   */
+  // Clean up expired sessions automatically - /
   private cleanupExpiredSessions(): void {
     const now = new Date();
     let cleanedCount = 0;
@@ -160,9 +138,7 @@ export class ConversationMemoryService {
     }
   }
 
-  /**
-   * Cleanup on server shutdown
-   */
+  // Cleanup on server shutdown - /
   public shutdown(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);

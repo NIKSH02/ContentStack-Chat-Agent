@@ -28,9 +28,7 @@
 //     this.refreshTokenExpiry = process.env.JWT_REFRESH_EXPIRY || '7d';
 //   }
 
-//     /**
-//    * Generate access token
-//    */
+//     
 //   generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
 //     const options: SignOptions = {
 //       expiresIn: this.accessTokenExpiry as any,
@@ -40,9 +38,7 @@
 //     return jwt.sign(payload, this.accessTokenSecret, options);
 //   }
 
-//   /**
-//    * Generate refresh token
-//    */
+//   
 //   generateRefreshToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
 //     const options: SignOptions = {
 //       expiresIn: this.refreshTokenExpiry as any,
@@ -52,9 +48,7 @@
 //     return jwt.sign(payload, this.refreshTokenSecret, options);
 //   }
 
-//   /**
-//    * Generate both access and refresh tokens
-//    */
+//   
 //   generateTokenPair(payload: Omit<JWTPayload, 'iat' | 'exp'>): TokenPair {
 //     return {
 //       accessToken: this.generateAccessToken(payload),
@@ -62,9 +56,7 @@
 //     };
 //   }
 
-//   /**
-//    * Verify access token
-//    */
+//   
 //   verifyAccessToken(token: string): JWTPayload {
 //     try {
 //       return jwt.verify(token, this.accessTokenSecret, {
@@ -76,9 +68,7 @@
 //     }
 //   }
 
-//   /**
-//    * Verify refresh token
-//    */
+//   
 //   verifyRefreshToken(token: string): JWTPayload {
 //     try {
 //       return jwt.verify(token, this.refreshTokenSecret, {
@@ -90,9 +80,7 @@
 //     }
 //   }
 
-//   /**
-//    * Decode token without verification (for debugging)
-//    */
+//   
 //   decodeToken(token: string): JWTPayload | null {
 //     try {
 //       return jwt.decode(token) as JWTPayload;
@@ -101,9 +89,7 @@
 //     }
 //   }
 
-//   /**
-//    * Get token expiry time
-//    */
+//   
 //   getTokenExpiry(token: string): Date | null {
 //     try {
 //       const decoded = this.decodeToken(token);
@@ -116,18 +102,14 @@
 //     }
 //   }
 
-//   /**
-//    * Check if token is expired
-//    */
+//   
 //   isTokenExpired(token: string): boolean {
 //     const expiry = this.getTokenExpiry(token);
 //     if (!expiry) return true;
 //     return new Date() > expiry;
 //   }
 
-//   /**
-//    * Generate API key style token (for tenant API keys)
-//    */
+//   // //    * Generate API key style token (for tenant API keys) - //    */
 //   generateApiKeyToken(tenantId: Types.ObjectId, keyId: Types.ObjectId): string {
 //     const payload = {
 //       tenantId: tenantId.toString(),
@@ -142,9 +124,7 @@
 //     });
 //   }
 
-//   /**
-//    * Verify API key token
-//    */
+//   // //    * Verify API key token - //    */
 //   verifyApiKeyToken(token: string): { tenantId: string; keyId: string; type: string } {
 //     try {
 //       return jwt.verify(token, this.accessTokenSecret, {

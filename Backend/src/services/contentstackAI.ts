@@ -26,15 +26,8 @@ export interface ContentStackResponse {
   responseProvider?: string;
 }
 
-/**
- * ContentStack AI Service
- * Combines Groq LLM with ContentStack MCP for intelligent content responses
- */
 export class ContentStackAIService {
 
-  /**
-   * Process a natural language query about ContentStack content with streaming response
-   */
   static async processContentQueryStream(
     query: ContentStackQuery, 
     onChunk: (chunk: string) => void
@@ -42,9 +35,6 @@ export class ContentStackAIService {
     return this.processContentQueryStreamWithStatus(query, onChunk, () => {});
   }
 
-  /**
-   * Process a natural language query with streaming response and status updates
-   */
   static async processContentQueryStreamWithStatus(
     query: ContentStackQuery, 
     onChunk: (chunk: string) => void,
@@ -291,9 +281,6 @@ I'm designed to help you find information about this website's content, products
     }
   }
 
-  /**
-   * Analyze the user query to determine the best MCP action
-   */
   // private static async analyzeQuery(query: string): Promise<{
   //   action: 'fetch_entries' | 'search_content' | 'get_content_types' | 'general';
   //   contentType?: string;
@@ -330,9 +317,7 @@ I'm designed to help you find information about this website's content, products
   //   return { action: 'fetch_entries' };
   // }
 
-  // /**
-  //  * Extract search terms from the query
-  //  */
+  // 
   // private static extractSearchTerm(query: string, excludeWord?: string): string {
   //   let searchTerm = query;
     
@@ -345,9 +330,6 @@ I'm designed to help you find information about this website's content, products
   //   return searchTerm || query;
   // }
 
-  /**
-   * Process and enhance content data for better media handling
-   */
   private static processContentForMediaHandling(contentData: any): any {
     if (!contentData) return contentData;
 
@@ -396,9 +378,6 @@ I'm designed to help you find information about this website's content, products
     }
   }
 
-  /**
-   * Check if a field contains image/asset data
-   */
   private static isImageAssetField(fieldName: string, value: any): boolean {
     const imageFieldPatterns = [
       /image/i, /photo/i, /picture/i, /banner/i, /hero/i, 
@@ -417,9 +396,6 @@ I'm designed to help you find information about this website's content, products
     return fieldMatches || valueIndicatesAsset;
   }
 
-  /**
-   * Check if field contains rich text that might have embedded media
-   */
   private static isRichTextField(fieldName: string, value: any): boolean {
     const richTextPatterns = [/content/i, /body/i, /description/i, /text/i, /rich/i];
     const fieldMatches = richTextPatterns.some(pattern => pattern.test(fieldName));
@@ -430,9 +406,6 @@ I'm designed to help you find information about this website's content, products
     return fieldMatches && valueIndicatesRichText;
   }
 
-  /**
-   * Format media field for display
-   */
   private static formatMediaField(value: any): string {
     if (!value) return '';
     
@@ -457,9 +430,6 @@ I'm designed to help you find information about this website's content, products
     return '';
   }
 
-  /**
-   * Format rich text content with embedded media
-   */
   private static formatRichTextWithMedia(value: string): string {
     if (!value || typeof value !== 'string') return value;
     
@@ -478,9 +448,6 @@ I'm designed to help you find information about this website's content, products
     return formatted;
   }
 
-  /**
-   * Check if URL is likely an image
-   */
   private static isImageUrl(url: string): boolean {
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
     const lowerUrl = url.toLowerCase();
@@ -488,9 +455,6 @@ I'm designed to help you find information about this website's content, products
            lowerUrl.includes('image') || lowerUrl.includes('photo');
   }
 
-  /**
-   * Get proper display format for asset
-   */
   private static getAssetDisplayFormat(asset: any): string {
     if (!asset) return '';
     
@@ -511,18 +475,12 @@ I'm designed to help you find information about this website's content, products
     }
   }
 
-  /**
-   * Estimate token count for content (rough approximation)
-   */
   private static estimateTokens(content: string): number {
     // Rough estimation: ~4 characters per token for English text
     // JSON tends to be more dense, so use ~3 characters per token
     return Math.ceil(content.length / 3);
   }
 
-  /**
-   * Intelligently summarize large data while preserving key information
-   */
   private static summarizeContentData(data: any, maxTokens: number = 5000): string {
     if (!data) return '';
 
@@ -658,9 +616,6 @@ I'm designed to help you find information about this website's content, products
     }
   }
 
-  /**
-   * Filter tools to exclude any modification/write operations - READ-ONLY system
-   */
   private static filterReadOnlyTools(availableTools: any[]): any[] {
     const FORBIDDEN_OPERATIONS = [
       'create', 'update', 'delete', 'publish', 'unpublish', 'deploy', 
@@ -723,9 +678,6 @@ I'm designed to help you find information about this website's content, products
     return safeTools;
   }
 
-  /**
-   * Enhanced LLM-driven tool AND content-type selection - READ-ONLY OPERATIONS ONLY
-   */
   private static async selectToolsAndContentTypesWithLLM(
     userQuery: string, 
     availableTools: any[], 
@@ -879,9 +831,6 @@ RESPOND WITH ONLY THE JSON OBJECT:`;
     }
   }
 
-  /**
-   * Legacy tool selection - kept for backward compatibility
-   */
   private static async selectToolsWithLLM(userQuery: string, availableTools: any[]): Promise<any[]> {
     // CRITICAL SECURITY: Filter out ALL modification tools
     const safeTools = this.filterReadOnlyTools(availableTools);
@@ -1003,9 +952,6 @@ RESPOND WITH ONLY THE JSON ARRAY OF READ-ONLY TOOLS:`;
     }
   }
 
-  /**
-   * Execute selected tools with content-type awareness
-   */
   private static async executeSelectedToolsWithContentTypes(
     selectedTools: any[], 
     selectedContentTypes: string[],
@@ -1227,9 +1173,6 @@ RESPOND WITH ONLY THE JSON ARRAY OF READ-ONLY TOOLS:`;
     return results;
   }
 
-  /**
-   * Legacy tool execution - kept for backward compatibility
-   */
   private static async executeSelectedTools(selectedTools: any[]): Promise<any> {
     const results: any = {};
 
@@ -1277,10 +1220,6 @@ RESPOND WITH ONLY THE JSON ARRAY OF READ-ONLY TOOLS:`;
     return results;
   }
 
-  /**
-   * Generate enhanced AI response using multiple data sources
-   * Strategy: Groq for tool selection, user's chosen provider for response generation
-   */
 //   private static async generateEnhancedAIResponse(
 //     userQuery: string,
 //     multiToolData: any,
@@ -1413,9 +1352,7 @@ RESPOND WITH ONLY THE JSON ARRAY OF READ-ONLY TOOLS:`;
 //     }
 //   }
 
-  /**
-   * Generate streaming AI response using user's chosen LLM provider with ContentStack context
-   */
+  // Generate streaming AI response using user's chosen LLM provider with ContentStack context - /
   private static async generateEnhancedAIResponseStream(
     userQuery: string,
     multiToolData: any,
@@ -1656,9 +1593,7 @@ You have access to real, live content from this website for VIEWING purposes onl
     }
   }
 
-  /**
-   * Generate AI response using Groq LLM with ContentStack context
-   */
+  // Generate AI response using Groq LLM with ContentStack context - /
 //   private static async generateAIResponse(
 //     userQuery: string, 
 //     contentData: any, 
@@ -1728,9 +1663,7 @@ You have access to real, live content from this website for VIEWING purposes onl
 //     }
 //   }
 
-  /**
-   * Get available content types for a stack
-   */
+  // Get available content types for a stack - /
   static async getContentTypes(tenantId: string, apiKey: string, projectId?: string): Promise<ContentStackResponse> {
     try {
       const mcpConfig = {
@@ -1770,9 +1703,7 @@ You have access to real, live content from this website for VIEWING purposes onl
     }
   }
 
-  /**
-   * Create new content with AI assistance
-   */
+  // Create new content with AI assistance - /
   static async createContentWithAI(
     tenantId: string,
     apiKey: string,
@@ -1853,9 +1784,7 @@ You have access to real, live content from this website for VIEWING purposes onl
     }
   }
 
-  /**
-   * Stop all MCP instances (cleanup)
-   */
+  // Stop all MCP instances (cleanup) - /
   static async cleanup(): Promise<void> {
     const instances = contentStackMCPManager.getActiveInstances();
     for (const [key, instance] of instances) {

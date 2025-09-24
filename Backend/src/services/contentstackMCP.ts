@@ -19,10 +19,6 @@ export interface MCPResponse {
   error?: string;
 }
 
-/**
- * ContentStack MCP Service
- * Integrates with ContentStack's official MCP server
- */
 export class ContentStackMCPService extends EventEmitter {
   private mcpProcess: ChildProcess | null = null;
   private config: ContentStackMCPConfig;
@@ -36,9 +32,6 @@ export class ContentStackMCPService extends EventEmitter {
     };
   }
 
-  /**
-   * Start the ContentStack MCP server
-   */
   async startMCPServer(): Promise<void> {
     try {
       console.log('Starting ContentStack MCP server...');
@@ -118,9 +111,7 @@ export class ContentStackMCPService extends EventEmitter {
     }
   }
 
-  /**
-   * Send a request to the MCP server using proper JSON-RPC 2.0 protocol
-   */
+  // Send a request to the MCP server using proper JSON-RPC 2.0 protocol
   async sendRequest(method: string, params: any = {}): Promise<MCPResponse> {
     return new Promise((resolve, reject) => {
       if (!this.isConnected || !this.mcpProcess) {
@@ -210,9 +201,6 @@ export class ContentStackMCPService extends EventEmitter {
     });
   }
 
-  /**
-   * Fetch content from ContentStack
-   */
   async fetchContent(contentType: string = 'page'): Promise<MCPResponse> {
     try {
       // Use the MCP protocol to call the get_all_entries tool
@@ -234,9 +222,6 @@ export class ContentStackMCPService extends EventEmitter {
     }
   }
 
-  /**
-   * Search content by type and term
-   */
   async searchContent(contentType: string, searchTerm?: string): Promise<MCPResponse> {
     try {
       return await this.sendRequest('tools/call', {
@@ -255,9 +240,6 @@ export class ContentStackMCPService extends EventEmitter {
     }
   }
 
-  /**
-   * List available tools from the MCP server
-   */
   async listAvailableTools(): Promise<MCPResponse> {
     try {
       return await this.sendRequest('tools/list', {});
@@ -269,9 +251,6 @@ export class ContentStackMCPService extends EventEmitter {
     }
   }
 
-  /**
-   * Get content types available in the stack
-   */
   async getContentTypes(): Promise<MCPResponse> {
     try {
       // First, let's list available tools
@@ -296,9 +275,6 @@ export class ContentStackMCPService extends EventEmitter {
     }
   }
 
-  /**
-   * Create new content entry
-   */
   async createContent(contentType: string, data: any): Promise<MCPResponse> {
     try {
       return await this.sendRequest('tools/call', {
@@ -316,9 +292,6 @@ export class ContentStackMCPService extends EventEmitter {
     }
   }
 
-  /**
-   * Update existing content entry
-   */
   async updateContent(contentType: string, entryId: string, data: any): Promise<MCPResponse> {
     try {
       return await this.sendRequest('contentstack/update_entry', {
@@ -334,9 +307,6 @@ export class ContentStackMCPService extends EventEmitter {
     }
   }
 
-  /**
-   * Stop the MCP server
-   */
   async stopMCPServer(): Promise<void> {
     if (this.mcpProcess) {
       this.mcpProcess.kill();
@@ -346,30 +316,18 @@ export class ContentStackMCPService extends EventEmitter {
     }
   }
 
-  /**
-   * Check if MCP server is connected
-   */
   isServerConnected(): boolean {
     return this.isConnected;
   }
 
-  /**
-   * Get the server process PID
-   */
   getServerPID(): number | undefined {
     return this.mcpProcess?.pid;
   }
 
-  /**
-   * Get current configuration
-   */
   getConfig(): ContentStackMCPConfig {
     return { ...this.config };
   }
 
-  /**
-   * Update configuration and restart server
-   */
   async updateConfig(newConfig: Partial<ContentStackMCPConfig>): Promise<void> {
     this.config = { ...this.config, ...newConfig };
     
@@ -384,9 +342,6 @@ export class ContentStackMCPService extends EventEmitter {
 class ContentStackMCPManager {
   private instances: Map<string, ContentStackMCPService> = new Map();
 
-  /**
-   * Get or create MCP instance for a tenant
-   */
   getInstance(tenantId: string, config: ContentStackMCPConfig): ContentStackMCPService {
     const key = `${tenantId}-${config.apiKey}`;
     
@@ -407,9 +362,6 @@ class ContentStackMCPManager {
     return instance;
   }
 
-  /**
-   * Clean up old instances for a tenant when API key changes
-   */
   private cleanupTenantInstances(tenantId: string, currentApiKey: string): void {
     const keysToRemove: string[] = [];
     
@@ -426,9 +378,7 @@ class ContentStackMCPManager {
     keysToRemove.forEach(key => this.instances.delete(key));
   }
 
-  /**
-   * Remove instance for a tenant
-   */
+  // Remove instance for a tenant - /
   async removeInstance(tenantId: string, apiKey: string): Promise<void> {
     const key = `${tenantId}-${apiKey}`;
     const instance = this.instances.get(key);
@@ -439,16 +389,12 @@ class ContentStackMCPManager {
     }
   }
 
-  /**
-   * Get all active instances
-   */
+  // Get all active instances - /
   getActiveInstances(): Map<string, ContentStackMCPService> {
     return this.instances;
   }
 
-  /**
-   * Force cleanup of all instances for a tenant (useful when changing API keys)
-   */
+  // Force cleanup of all instances for a tenant (useful when changing API keys) - /
   async forceCleanupTenant(tenantId: string): Promise<void> {
     const keysToRemove: string[] = [];
     

@@ -45,9 +45,6 @@ export class MCPOAuthController {
 
   constructor() {}
 
-  /**
-   * Get configuration directory path
-   */
   private getConfigDir(): string {
     const platform = process.platform;
     const dirName = 'ContentstackMCP';
@@ -61,17 +58,11 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Get config file path for a specific session/user
-   */
   private getConfigFile(sessionId: string): string {
     const configDir = this.getConfigDir();
     return path.join(configDir, `oauth-config-${sessionId}.json`);
   }
 
-  /**
-   * Ensure config directory exists
-   */
   private async ensureConfigDir(): Promise<void> {
     try {
       const configDir = this.getConfigDir();
@@ -84,9 +75,6 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Generate code verifier for PKCE
-   */
   private generateCodeVerifier(length: number = 128): string {
     const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
     return Array.from(
@@ -95,9 +83,6 @@ export class MCPOAuthController {
     ).join('');
   }
 
-  /**
-   * Generate code challenge from code verifier
-   */
   private async generateCodeChallenge(codeVerifier: string): Promise<string> {
     const hash = crypto.createHash('sha256');
     hash.update(codeVerifier);
@@ -106,9 +91,6 @@ export class MCPOAuthController {
     return base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
-  /**
-   * Create HTTP server on port 8184 to handle OAuth callback
-   */
   private createOAuthServer(sessionId: string): http.Server {
     let requestHandled = false;
     
@@ -204,9 +186,6 @@ export class MCPOAuthController {
     return server;
   }
 
-  /**
-   * Clean up OAuth session resources
-   */
   private cleanupOAuthSession(sessionId: string): void {
     // Clean up OAuth state
     this.oauthStates.delete(sessionId);
@@ -226,9 +205,6 @@ export class MCPOAuthController {
     }, 30000); // Keep for 30 seconds
   }
 
-  /**
-   * Send success HTML response
-   */
   private sendSuccessResponse(res: http.ServerResponse, sessionId: string): void {
     const successHtml = `
       <!DOCTYPE html>
@@ -261,9 +237,6 @@ export class MCPOAuthController {
     res.end(successHtml);
   }
 
-  /**
-   * Send error HTML response
-   */
   private sendErrorResponse(res: http.ServerResponse): void {
     const errorHtml = `
       <!DOCTYPE html>
@@ -286,18 +259,12 @@ export class MCPOAuthController {
     res.end(errorHtml);
   }
 
-  /**
-   * Save OAuth configuration
-   */
   private async saveConfig(sessionId: string, config: OAuthConfig): Promise<void> {
     await this.ensureConfigDir();
     const configFile = this.getConfigFile(sessionId);
     await fs.writeFile(configFile, JSON.stringify(config, null, 2));
   }
 
-  /**
-   * Load OAuth configuration
-   */
   private async loadConfig(sessionId: string): Promise<OAuthConfig | null> {
     try {
       const configFile = this.getConfigFile(sessionId);
@@ -311,10 +278,7 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Start OAuth flow - Generate authorization URL
-   * GET /api/mcp/oauth/start
-   */
+  // Start OAuth flow - Generate authorization URL (GET /api/mcp/oauth/start)
   public async startOAuthFlow(req: Request, res: Response): Promise<Response | void> {
     try {
       const sessionId = crypto.randomUUID();
@@ -366,10 +330,6 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Handle OAuth callback - Exchange code for tokens
-   * GET /api/mcp/oauth/callback
-   */
   public async handleOAuthCallback(req: Request, res: Response): Promise<Response | void> {
     try {
       const { code, state, error } = req.query;
@@ -464,9 +424,6 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Exchange authorization code for access token (for HTTP server callback)
-   */
   private async performTokenExchange(code: string, codeVerifier: string): Promise<any> {
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -493,17 +450,11 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Exchange authorization code for access token (legacy method for direct callback)
-   */
   private async exchangeCodeForToken(code: string, codeVerifier: string, req: Request): Promise<any> {
     return this.performTokenExchange(code, codeVerifier);
   }
 
-  /**
-   * Refresh access token using refresh token
-   * POST /api/mcp/oauth/refresh
-   */
+  // Refresh access token using refresh token (POST /api/mcp/oauth/refresh)
   public async refreshToken(req: Request, res: Response): Promise<Response | void> {
     try {
       const { sessionId } = req.body;
@@ -565,10 +516,6 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Get current OAuth status and token info
-   * GET /api/mcp/oauth/status/:sessionId
-   */
   public async getOAuthStatus(req: Request, res: Response): Promise<Response | void> {
     try {
       const { sessionId } = req.params;
@@ -614,10 +561,6 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Logout and revoke OAuth tokens
-   * POST /api/mcp/oauth/logout
-   */
   public async logout(req: Request, res: Response): Promise<Response | void> {
     try {
       const { sessionId } = req.body;
@@ -680,9 +623,6 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Get OAuth app authorization ID
-   */
   private async getOAuthAppAuthorization(accessToken: string, userUid: string, organizationUid: string): Promise<string | null> {
     try {
       const headers = {
@@ -716,9 +656,6 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Revoke OAuth app authorization
-   */
   private async revokeOAuthAppAuthorization(authorizationId: string, accessToken: string, organizationUid: string): Promise<void> {
     if (!authorizationId || authorizationId.length < 1) {
       throw new Error('Invalid authorization ID');
@@ -741,10 +678,7 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Check OAuth completion status
-   * GET /api/mcp/oauth/check/:sessionId
-   */
+  // Check OAuth completion status - GET /api/mcp/oauth/check/:sessionId - /
   public async checkOAuthCompletion(req: Request, res: Response): Promise<Response | void> {
     try {
       const { sessionId } = req.params;
@@ -798,10 +732,7 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Get authentication headers for MCP API calls
-   * GET /api/mcp/oauth/headers/:sessionId
-   */
+  // Get authentication headers for MCP API calls (GET /api/mcp/oauth/headers/:sessionId)
   public async getAuthHeaders(req: Request, res: Response): Promise<Response | void> {
     try {
       const { sessionId } = req.params;
@@ -838,9 +769,6 @@ export class MCPOAuthController {
     }
   }
 
-  /**
-   * Ensure token is valid, refresh if needed
-   */
   private async ensureValidToken(sessionId: string): Promise<OAuthConfig | null> {
     const config = await this.loadConfig(sessionId);
     if (!config || !config.access_token) {
@@ -858,9 +786,7 @@ export class MCPOAuthController {
     return config;
   }
 
-  /**
-   * Perform token refresh
-   */
+  // Perform token refresh - /
   private async performTokenRefresh(sessionId: string, config: OAuthConfig): Promise<OAuthConfig | null> {
     if (!config.refresh_token) {
       return null;

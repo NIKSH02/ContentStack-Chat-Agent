@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import contentstackOAuthService from '../services/contentstackOAuth';
 
-
 // Define AuthRequest interface
 interface AuthRequest extends Request {
   user?: {
@@ -14,9 +13,6 @@ interface AuthRequest extends Request {
   };
 }
 
-/**
- * Initiate OAuth flow - redirect to ContentStack
- */
 export const initiateOAuth = async (req: Request, res: Response): Promise<void> => {
   try {
     // Generate state for CSRF protection
@@ -42,9 +38,6 @@ export const initiateOAuth = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-/**
- * Handle OAuth callback from ContentStack
- */
 // Simple in-memory cache to prevent code reuse
 const processedCodes = new Set<string>();
 
@@ -269,9 +262,6 @@ setInterval(() => {
   console.log('Cleared processed OAuth codes cache');
 }, 10 * 60 * 1000);
 
-/**
- * Clear processed OAuth codes cache (for testing)
- */
 export const clearOAuthCache = async (req: Request, res: Response) => {
   processedCodes.clear();
   console.log('Manually cleared processed OAuth codes cache');
@@ -281,9 +271,6 @@ export const clearOAuthCache = async (req: Request, res: Response) => {
   });
 };
 
-/**
- * Get user's ContentStack projects and stacks
- */
 export const getUserProjects = async (req: Request, res: Response): Promise<void> => {
   try {
     const { access_token } = req.query;
@@ -326,9 +313,6 @@ export const getUserProjects = async (req: Request, res: Response): Promise<void
   }
 };
 
-/**
- * Get delivery tokens for a specific stack
- */
 // export const getStackTokens = async (req: Request, res: Response): Promise<void> => {
 //   try {
 //     const { stackApiKey } = req.params;
@@ -376,10 +360,7 @@ export const getUserProjects = async (req: Request, res: Response): Promise<void
 //   }
 // };
 
-/**
- * Refresh ContentStack access token using refresh token
- * Handles ContentStack's complete response format
- */
+// Refresh ContentStack access token using refresh token - Handles ContentStack's complete response format - /
 export const refreshAccessToken = async (req: Request, res: Response): Promise<void> => {
   try {
     const { refresh_token } = req.body;
@@ -424,10 +405,7 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<v
   }
 };
 
-/**
- * Handle app installation webhook from ContentStack
- * This endpoint receives webhook data when the app is installed
- */
+// Handle app installation webhook from ContentStack - This endpoint receives webhook data when the app is installed - /
 export const handleInstallWebhook = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('=== ContentStack Installation Webhook Received ===');
