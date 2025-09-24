@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paragraph, Heading } from '@contentstack/venus-components';
+import { Paragraph, Heading, Button } from '@contentstack/venus-components';
 
 export const HomePage: React.FC = () => {
   return (
@@ -26,18 +26,18 @@ export const HomePage: React.FC = () => {
 
           {/* Hero Actions */}
           <div className="flex gap-4 justify-center mb-16">
-            <a 
+            <Button 
               href="/oauth"
               className="px-8 py-4 bg-[#6a5dDF] text-white font-semibold rounded-lg hover:bg-[#5a4ecf] transition-colors"
             >
               Start Chatting
-            </a>
-            <a 
+            </Button>
+            <Button 
               href="/documentation"
               className="px-8 py-4 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
             >
               View Documentation
-            </a>
+            </Button>
           </div>
 
           {/* Stats */}
@@ -71,36 +71,36 @@ export const HomePage: React.FC = () => {
               <div className="w-16 h-16 mx-auto mb-6 bg-white border-2 border-[#6a5dDF] rounded-2xl flex items-center justify-center">
                 <div className="w-6 h-6 bg-[#6a5dDF] rounded"></div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Natural Query</h3>
+              <Heading className="text-lg font-semibold text-gray-900 mb-3" text='Natural Query' />
               <Paragraph className="text-gray-600" text='Ask anything about your content in plain language' />
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-6 bg-white border-2 border-gray-300 rounded-2xl flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-6 bg-white border-2 border-[#6a5dDF] rounded-2xl flex items-center justify-center">
                 <div className="grid grid-cols-2 gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-sm"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-sm"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-sm"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-sm"></div>
+                  <div className="w-2 h-2 bg-[#6a5dDF] rounded-sm"></div>
+                  <div className="w-2 h-2 bg-[#6a5dDF] rounded-sm"></div>
+                  <div className="w-2 h-2 bg-[#6a5dDF] rounded-sm"></div>
+                  <div className="w-2 h-2 bg-[#6a5dDF] rounded-sm"></div>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Smart Routing</h3>
+              <Heading className="text-lg font-semibold text-gray-900 mb-3" text='Smart Routing ' />
               <Paragraph className="text-gray-600" text='Groq intelligence selects optimal tools' />
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-6 bg-white border-2 border-gray-300 rounded-2xl flex items-center justify-center">
-                <div className="w-8 h-6 bg-gray-400 rounded"></div>
+              <div className="w-16 h-16 mx-auto mb-6 bg-white border-2 border-[#6a5dDF] rounded-2xl flex items-center justify-center">
+                <div className="w-8 h-6 bg-[#6a5dDF] rounded"></div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">MCP Execution</h3>
+              <Heading className="text-lg font-semibold text-gray-900 mb-3" text='MCP Execution ' />
               <Paragraph className="text-gray-600" text='Execute ContentStack operations seamlessly' />
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-6 bg-white border-2 border-gray-300 rounded-2xl flex items-center justify-center">
-                <div className="w-6 h-4 bg-gray-400 rounded-full"></div>
+              <div className="w-16 h-16 mx-auto mb-6 bg-white border-2 border-[#6a5dDF] rounded-2xl flex items-center justify-center">
+                <div className="w-6 h-4 bg-[#6a5dDF] rounded-full"></div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">AI Response</h3>
+              <Heading className="text-lg font-semibold text-gray-900 mb-3" text='AI Response '  />
               <Paragraph className="text-gray-600" text='Get intelligent, contextual answers' />
             </div>
           </div>
@@ -120,7 +120,7 @@ export const HomePage: React.FC = () => {
               <div className="w-12 h-12 bg-[#6a5dDF] bg-opacity-10 rounded-xl flex items-center justify-center mb-6">
                 <div className="w-6 h-6 bg-[#6a5dDF] rounded"></div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Dual-LLM Strategy</h3>
+              <Heading className="text-xl font-semibold text-gray-900 mb-3"  text='Dual-LLM Strategy'/>
               <Paragraph className="text-gray-600 mb-4" text='Groq for tool selection, your choice for intelligent responses' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Groq</span>
@@ -140,7 +140,7 @@ export const HomePage: React.FC = () => {
                   <div className="w-1 h-1 bg-[#6a5dDF] rounded-full"></div>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">59+ ContentStack Tools</h3>
+              <Heading className="text-xl font-semibold text-gray-900 mb-3" text='59+ ContentStack Tools' />
               <Paragraph className="text-gray-600 mb-4" text='Complete CMA & Launch API integration for all operations' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Entries</span>
@@ -155,7 +155,7 @@ export const HomePage: React.FC = () => {
                   <div className="w-1 h-3 bg-[#6a5dDF] absolute top-1 left-2 rounded-full"></div>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Real-time Streaming</h3>
+              <Heading className="text-xl font-semibold text-gray-900 mb-3" text='Real-time Streaming' />
               <Paragraph className="text-gray-600 mb-4">Instant responses with live updates and WebSocket connection</Paragraph>
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">2-3s Response</span>
@@ -169,7 +169,7 @@ export const HomePage: React.FC = () => {
                   <div className="w-2 h-2 bg-white rounded-full absolute top-1 right-1"></div>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Smart Automation</h3>
+              <Heading className="text-xl font-semibold text-gray-900 mb-3" text='Smart Automation' />
               <Paragraph className="text-gray-600 mb-4" text='Intelligent workflows and automated content operations' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Auto-publish</span>
@@ -183,7 +183,7 @@ export const HomePage: React.FC = () => {
                   <div className="w-2 h-2 bg-[#6a5dDF] rounded-full absolute top-0.5 left-0.5"></div>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Natural Language</h3>
+              <Heading className="text-xl font-semibold text-gray-900 mb-3" text='Natural Language ' />
               <Paragraph className="text-gray-600 mb-4" text='Ask complex questions in plain English, get precise answers' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Conversational</span>
@@ -197,7 +197,7 @@ export const HomePage: React.FC = () => {
                   <div className="w-3 h-0.5 bg-white absolute top-2.5 left-1.5 rounded-full"></div>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Enterprise Ready</h3>
+              <Heading className="text-xl font-semibold text-gray-900 mb-3" text='Enterprise Ready' />
               <Paragraph className="text-gray-600 mb-4" text='Secure, scalable, and built for production environments' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Secure</span>

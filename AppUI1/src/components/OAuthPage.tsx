@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Paragraph, Heading } from '@contentstack/venus-components';
 
 interface ConnectionDetails {
   tenantId: string;
@@ -215,9 +216,9 @@ export const OAuthPage = () => {
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
           Connect Your <span className="text-[#6a5dDF]">ContentStack</span> Account
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-12">
-          Choose your preferred integration method to enable AI-powered content management
-        </p>
+        <Paragraph  className="text-lg text-gray-600 max-w-2xl mx-auto mb-12" text='Choose your preferred integration method to enable AI-powered content management' />
+          
+         
 
         {/* Progress Indicator */}
         <div className="flex items-center justify-center gap-4 mb-16">
@@ -244,8 +245,8 @@ export const OAuthPage = () => {
                   <div className="w-6 h-6 bg-[#6a5dDF] rounded"></div>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">MCP Server</h2>
-                  <p className="text-gray-600">Model Context Protocol Integration</p>
+                  < Heading className="text-2xl font-semibold text-gray-900" text='MCP Server' />
+                  <Paragraph  className="text-gray-600" text='Model Context Protocol Integration ' />
                 </div>
               </div>
               
@@ -268,7 +269,7 @@ export const OAuthPage = () => {
                       </div>
                       <div>
                         <h4 className="font-semibold text-blue-900 mb-1">Secure Access</h4>
-                        <p className="text-blue-800 text-sm">OAuth ensures secure, token-based access to your ContentStack data without exposing credentials.</p>
+                        <Paragraph  className="text-blue-800 text-sm" text='OAuth ensures secure, token-based access to your ContentStack data without exposing credentials. ' />
                       </div>
                     </div>
                   </div>
@@ -280,7 +281,7 @@ export const OAuthPage = () => {
                       </div>
                       <div>
                         <h4 className="font-semibold text-purple-900 mb-1">MCP Server Integration</h4>
-                        <p className="text-purple-800 text-sm">Enables 59+ specialized tools for content management, publishing workflows, and complex operations.</p>
+                        <Paragraph  className="text-purple-800 text-sm" text='Enables 59+ specialized tools for content management, publishing workflows, and complex operations. ' />
                       </div>
                     </div>
                   </div>
@@ -292,7 +293,7 @@ export const OAuthPage = () => {
                       </div>
                       <div>
                         <h4 className="font-semibold text-green-900 mb-1">Real-time Operations</h4>
-                        <p className="text-green-800 text-sm">Required for live content queries, asset management, and dynamic content operations in your chat agent.</p>
+                        <Paragraph  className="text-green-800 text-sm" text='Required for live content queries, asset management, and dynamic content operations in your chat agent. ' />
                       </div>
                     </div>
                   </div>
@@ -311,8 +312,8 @@ export const OAuthPage = () => {
               {mcpStatus === 'connecting' && (
                 <div className="text-center py-8">
                   <div className="w-8 h-8 border-2 border-gray-200 border-t-[#6a5dDF] rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-700 font-medium mb-2">Connecting to ContentStack</p>
-                  <p className="text-sm text-gray-500">Complete the OAuth authorization in the popup</p>
+                  <Paragraph  className="text-gray-700 font-medium mb-2" text='Connecting to ContentStack ' />
+                  <Paragraph  className="text-sm text-gray-500" text='Complete the OAuth authorization in the popup ' />
                 </div>
               )}
 
@@ -376,9 +377,9 @@ export const OAuthPage = () => {
                       </div>
                       <span className="font-semibold text-red-900">Connection Failed</span>
                     </div>
-                    <p className="text-red-700 text-sm">
+                    <p  className="text-red-700 text-sm">
                       {errorMessage || 'Unable to establish OAuth connection. Please check your ContentStack permissions and try again.'}
-                    </p>
+                     </p>
                   </div>
                   <button
                     onClick={() => {
@@ -404,8 +405,8 @@ export const OAuthPage = () => {
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-semibold text-gray-900">Chat Agent</h2>
-                  <p className="text-gray-600">Direct Content Integration</p>
+                  < Heading className="text-2xl font-semibold text-gray-900" text='Chat Agent' />
+                  <Paragraph  className="text-gray-600" text='Direct Content Integration '/>
                 </div>
               </div>
               
@@ -428,7 +429,7 @@ export const OAuthPage = () => {
                       </div>
                       <div>
                         <h4 className="font-semibold text-indigo-900 mb-1">Direct Chat Integration</h4>
-                        <p className="text-indigo-800 text-sm">Enables your chat widget to directly access ContentStack content for real-time responses without server overhead.</p>
+                        <Paragraph  className="text-indigo-800 text-sm" text='Enables your chat widget to directly access ContentStack content for real-time responses without server overhead. ' />
                       </div>
                     </div>
                   </div>
@@ -440,7 +441,7 @@ export const OAuthPage = () => {
                       </div>
                       <div>
                         <h4 className="font-semibold text-orange-900 mb-1">Faster Performance</h4>
-                        <p className="text-orange-800 text-sm">Bypasses MCP server for simple queries, reducing latency and providing instant content access for better user experience.</p>
+                        <Paragraph  className="text-orange-800 text-sm" text='Bypasses MCP server for simple queries, reducing latency and providing instant content access for better user experience. ' />
                       </div>
                     </div>
                   </div>
@@ -452,7 +453,7 @@ export const OAuthPage = () => {
                       </div>
                       <div>
                         <h4 className="font-semibold text-teal-900 mb-1">Lightweight Operations</h4>
-                        <p className="text-teal-800 text-sm">Essential for basic content retrieval, search operations, and simple chat interactions without complex tool requirements.</p>
+                        <Paragraph  className="text-teal-800 text-sm" text='Essential for basic content retrieval, search operations, and simple chat interactions without complex tool requirements. ' />
                       </div>
                     </div>
                   </div>
@@ -471,8 +472,8 @@ export const OAuthPage = () => {
               {chatAgentStatus === 'connecting' && (
                 <div className="text-center py-8">
                   <div className="w-8 h-8 border-2 border-gray-200 border-t-[#6a5dDF] rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-700 font-medium mb-2">Connecting to ContentStack</p>
-                  <p className="text-sm text-gray-500">Complete the OAuth authorization in the popup</p>
+                  <Paragraph  className="text-gray-700 font-medium mb-2" text='Connecting to ContentStack ' />
+                  <Paragraph  className="text-sm text-gray-500" text='Complete the OAuth authorization in the popup ' />
                 </div>
               )}
 
@@ -487,10 +488,10 @@ export const OAuthPage = () => {
                       </div>
                       <span className="font-semibold text-green-900">Successfully Connected</span>
                     </div>
-                    <p className="text-green-700 text-sm">
-                      Your chat agent is now ready to access ContentStack content directly. 
-                      Perfect for SDK integration and real-time queries.
-                    </p>
+                    <Paragraph text='Your chat agent is now ready to access ContentStack content directly. 
+                      Perfect for SDK integration and real-time queries.' className="text-green-700 text-sm" />
+                      
+                     
                   </div>
                   <button
                     onClick={resetChatAgent}
@@ -512,9 +513,9 @@ export const OAuthPage = () => {
                       </div>
                       <span className="font-semibold text-red-900">Connection Failed</span>
                     </div>
-                    <p className="text-red-700 text-sm">
+                    <p  className="text-red-700 text-sm">
                       {errorMessage || 'Unable to establish OAuth connection. Please check your ContentStack permissions and try again.'}
-                    </p>
+                     </p>
                   </div>
                   <button
                     onClick={() => {
@@ -534,12 +535,10 @@ export const OAuthPage = () => {
         {/* Next Steps */}
         {(mcpStatus === 'connected' || chatAgentStatus === 'connected') && (
           <div className="mt-16 bg-gray-50 rounded-2xl p-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
-              You're All Set!
-            </h2>
-            <p className="text-lg text-gray-600 text-center mb-12 max-w-2xl mx-auto">
-              Your ContentStack integration is ready. Choose your next step to start building.
-            </p>
+            < Heading className="text-3xl font-bold text-gray-900 mb-4 text-center" text="You're All Set!" />
+            <Paragraph  className="text-lg text-gray-600 text-center mb-12 max-w-2xl mx-auto" text='Your ContentStack integration is ready. Choose your next step to start building.' />
+              
+             
             
             <div className="grid md:grid-cols-3 gap-8">
               <div className="bg-white rounded-xl p-8 text-center hover:shadow-lg transition-shadow">
@@ -547,9 +546,9 @@ export const OAuthPage = () => {
                   <div className="w-8 h-6 bg-blue-600 rounded"></div>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Documentation</h3>
-                <p className="text-gray-600 mb-6">
-                  Complete guides and API references for quick integration
-                </p>
+                <Paragraph  className="text-gray-600 mb-6" text='Complete guides and API references for quick integration' />
+                  
+                 
                 <a 
                   href="/documentation" 
                   className="inline-flex items-center text-blue-600 hover:text-blue-700 font-semibold"
@@ -568,9 +567,9 @@ export const OAuthPage = () => {
                   </div>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Quick Start</h3>
-                <p className="text-gray-600 mb-6">
-                  Get up and running in minutes with our step-by-step guide
-                </p>
+                <Paragraph  className="text-gray-600 mb-6" text='Get up and running in minutes with our step-by-step guide' /> 
+                  
+                 
                 <a 
                   href="/documentation#quickstart" 
                   className="inline-flex items-center text-green-600 hover:text-green-700 font-semibold"
@@ -592,9 +591,9 @@ export const OAuthPage = () => {
                   </div>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Analytics</h3>
-                <p className="text-gray-600 mb-6">
-                  Monitor performance, usage, and optimize your integration
-                </p>
+                <Paragraph  className="text-gray-600 mb-6" text='Monitor performance, usage, and optimize your integration' />
+                  
+                 
                 <a 
                   href="/analytics" 
                   className="inline-flex items-center text-purple-600 hover:text-purple-700 font-semibold"
@@ -610,7 +609,7 @@ export const OAuthPage = () => {
         )}
 
         {/* Debug Section */}
-        <div className="mt-8 p-6 bg-gray-100 rounded-lg">
+        {/* <div className="mt-8 p-6 bg-gray-100 rounded-lg">
           <h3 className="text-lg font-semibold mb-4">🔧 Debug OAuth Flow</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
@@ -644,10 +643,10 @@ export const OAuthPage = () => {
           
           {errorMessage && (
             <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded">
-              <p className="text-red-800 text-sm"><strong>Error:</strong> {errorMessage}</p>
+              <p  className="text-red-800 text-sm"><strong>Error:</strong> {errorMessage} </p>
             </div>
           )}
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Paragraph, Heading } from '@contentstack/venus-components';
+
 
 interface AuthStatus {
   type: 'mcp' | 'chat-agent' | null;
@@ -144,9 +146,9 @@ export const OAuthPage: React.FC = () => {
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
             OAuth <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Setup</span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Connect your ContentStack account to unlock the full power of our AI-driven chat agent
-          </p>
+           <Paragraph text='Connect your ContentStack account to unlock the full power of our AI-driven chat agent' className="text-xl text-gray-600 max-w-2xl mx-auto" />
+            
+           
         </div>
 
         {/* Status Display */}
@@ -159,11 +161,11 @@ export const OAuthPage: React.FC = () => {
                   <h3 className="font-semibold text-gray-900">
                     {authStatus.type === 'mcp' ? 'MCP Server' : 'Chat Agent'} Authentication
                   </h3>
-                  <p className="text-sm text-gray-600">
+                   <p className="text-sm text-gray-600">
                     {authStatus.status === 'loading' && 'Waiting for authorization...'}
                     {authStatus.status === 'success' && 'Successfully authenticated!'}
                     {authStatus.status === 'error' && `Error: ${authStatus.error}`}
-                  </p>
+                   </p>
                 </div>
               </div>
               {authStatus.status !== 'loading' && (
@@ -189,9 +191,9 @@ export const OAuthPage: React.FC = () => {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">MCP Server</h3>
-              <p className="text-gray-600">
-                Connect to the Model Context Protocol server for enhanced AI capabilities
-              </p>
+               <Paragraph text='Connect to the Model Context Protocol server for enhanced AI capabilities' className="text-gray-600" />
+                
+               
             </div>
 
             <div className="space-y-4 mb-6">
@@ -230,9 +232,9 @@ export const OAuthPage: React.FC = () => {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Chat Agent</h3>
-              <p className="text-gray-600">
-                Authenticate with the main chat interface for conversational AI
-              </p>
+               <Paragraph text='Authenticate with the main chat interface for conversational AI' className="text-gray-600" />
+                
+               
             </div>
 
             <div className="space-y-4 mb-6">
@@ -272,21 +274,21 @@ export const OAuthPage: React.FC = () => {
                 1
               </div>
               <h4 className="font-semibold text-gray-900 mb-2">Choose Service</h4>
-              <p className="text-sm text-gray-600">Select either MCP Server or Chat Agent based on your needs</p>
+               <Paragraph text='Select either MCP Server or Chat Agent based on your needs ' className="text-sm text-gray-600" />
             </div>
             <div className="text-center">
               <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center text-xl font-bold text-blue-600">
                 2
               </div>
               <h4 className="font-semibold text-gray-900 mb-2">Authorize Access</h4>
-              <p className="text-sm text-gray-600">Complete the OAuth flow in the popup window</p>
+               <Paragraph text='Complete the OAuth flow in the popup window ' className="text-sm text-gray-600" />
             </div>
             <div className="text-center">
               <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center text-xl font-bold text-blue-600">
                 3
               </div>
               <h4 className="font-semibold text-gray-900 mb-2">Start Chatting</h4>
-              <p className="text-sm text-gray-600">Begin using the AI-powered ContentStack assistant</p>
+               <Paragraph text='Begin using the AI-powered ContentStack assistant ' className="text-sm text-gray-600" />
             </div>
           </div>
         </div>

@@ -64,7 +64,7 @@ export const Navbar: React.FC = () => {
           >
             Get Started
           </Link>
-        </div>
+          </div>
       </div>
     </nav>
   );
