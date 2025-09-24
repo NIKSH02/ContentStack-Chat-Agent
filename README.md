@@ -548,14 +548,14 @@ Enable debug logging:
 
 ## 📚 Documentation
 
-- **API Documentation**: [Backend API Docs](./Backend/docs/)
-- **SDK Documentation**: [Widget SDK Guide](./SDK/README.md)
-- **ContentStack MCP**: [MCP Integration Guide](./Backend/docs/MCP_MULTI_LLM_IMPLEMENTATION.md)
-- **OAuth Setup**: [OAuth Configuration](./Backend/docs/contentstack-oauth.md)
+- **API Documentation**: [Backend API Docs](https://appui.eu-contentstackapps.com/)
+- **SDK Documentation**: [Widget SDK Guide](https://appui.eu-contentstackapps.com)
+- **ContentStack MCP**: [MCP Integration Guide](https://appui.eu-contentstackapps.com)
+- **OAuth Setup**: [OAuth Configuration](https://appui.eu-contentstackapps.com)
 
 ## 🎥 Demo & Hackathon Submission
 
-**🎬 Watch our hackathon submission video**: [https://www.youtube.com/watch?v=PilOfOXxfeI](https://www.youtube.com/watch?v=PilOfOXxfeI)
+**🎬 Watch hackathon submission video**: [https://www.youtube.com/watch?v=PilOfOXxfeI](https://www.youtube.com/watch?v=PilOfOXxfeI)
 
 This video showcases:
 - Complete system demonstration
@@ -580,7 +580,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/NIKSH02/ContentStack-Chat-Agent/issues)
-- **Email**: [Contact the maintainers](mailto:support@yourproject.com)
+- **Email**: [Contact the maintainers](mailto:nikhilsharma0437@gmail.com)
 - **Discord**: [Join our community](https://discord.gg/yourserver)
 
 ---
@@ -589,6 +589,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ for the ContentStack Community**
 
-[🎥 Watch Demo](https://www.youtube.com/watch?v=PilOfOXxfeI) • [📚 Documentation](./docs/) • [🚀 Get Started](#quick-start) • [🤝 Contribute](#contributing)
+[🎥 Watch Demo](https://www.youtube.com/watch?v=PilOfOXxfeI) • [📚 Documentation](https://appui.eu-contentstackapps.com/documentation) • [🚀 Get Started](#quick-start) • [🤝 Contribute](#contributing)
 
 </div>
