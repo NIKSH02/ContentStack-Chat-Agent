@@ -1,4 +1,5 @@
 import React from 'react';
+import { Paragraph, Heading } from '@contentstack/venus-components';
 
 export const HomePage: React.FC = () => {
   return (
@@ -20,10 +21,8 @@ export const HomePage: React.FC = () => {
           </h1>
           
           {/* Hero Description */}
-          <p className="text-xl text-gray-600 mb-12 leading-relaxed max-w-3xl mx-auto">
-            Transform how you interact with ContentStack through natural language. 
-            Advanced dual-LLM architecture with 59+ integrated tools for intelligent content management.
-          </p>
+          <Paragraph className="text-xl text-gray-600 mb-12 leading-relaxed max-w-3xl mx-auto" text='Transform how you interact with ContentStack through natural language. 
+            Advanced dual-LLM architecture with 59+ integrated tools for intelligent content management.' />
 
           {/* Hero Actions */}
           <div className="flex gap-4 justify-center mb-16">
@@ -64,9 +63,7 @@ export const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">How It Works</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Sophisticated multi-LLM strategy optimized for intelligent content operations
-            </p>
+            <Paragraph className="text-lg text-gray-600 max-w-2xl mx-auto" text='Sophisticated multi-LLM strategy optimized for intelligent content operations' />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -75,7 +72,7 @@ export const HomePage: React.FC = () => {
                 <div className="w-6 h-6 bg-[#6a5dDF] rounded"></div>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Natural Query</h3>
-              <p className="text-gray-600">Ask anything about your content in plain language</p>
+              <Paragraph className="text-gray-600" text='Ask anything about your content in plain language' />
             </div>
             
             <div className="text-center">
@@ -88,7 +85,7 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Smart Routing</h3>
-              <p className="text-gray-600">Groq intelligence selects optimal tools</p>
+              <Paragraph className="text-gray-600" text='Groq intelligence selects optimal tools' />
             </div>
             
             <div className="text-center">
@@ -96,7 +93,7 @@ export const HomePage: React.FC = () => {
                 <div className="w-8 h-6 bg-gray-400 rounded"></div>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">MCP Execution</h3>
-              <p className="text-gray-600">Execute ContentStack operations seamlessly</p>
+              <Paragraph className="text-gray-600" text='Execute ContentStack operations seamlessly' />
             </div>
             
             <div className="text-center">
@@ -104,7 +101,7 @@ export const HomePage: React.FC = () => {
                 <div className="w-6 h-4 bg-gray-400 rounded-full"></div>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">AI Response</h3>
-              <p className="text-gray-600">Get intelligent, contextual answers</p>
+              <Paragraph className="text-gray-600" text='Get intelligent, contextual answers' />
             </div>
           </div>
         </div>
@@ -115,9 +112,7 @@ export const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Key Features</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Everything you need for intelligent content management and automation
-            </p>
+            <Paragraph className="text-lg text-gray-600 max-w-2xl mx-auto" text='Everything you need for intelligent content management and automation' />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -126,7 +121,7 @@ export const HomePage: React.FC = () => {
                 <div className="w-6 h-6 bg-[#6a5dDF] rounded"></div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Dual-LLM Strategy</h3>
-              <p className="text-gray-600 mb-4">Groq for tool selection, your choice for intelligent responses</p>
+              <Paragraph className="text-gray-600 mb-4" text='Groq for tool selection, your choice for intelligent responses' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Groq</span>
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">OpenAI</span>
@@ -146,7 +141,7 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">59+ ContentStack Tools</h3>
-              <p className="text-gray-600 mb-4">Complete CMA & Launch API integration for all operations</p>
+              <Paragraph className="text-gray-600 mb-4" text='Complete CMA & Launch API integration for all operations' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Entries</span>
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Assets</span>
@@ -161,7 +156,7 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Real-time Streaming</h3>
-              <p className="text-gray-600 mb-4">Instant responses with live updates and WebSocket connection</p>
+              <Paragraph className="text-gray-600 mb-4">Instant responses with live updates and WebSocket connection</Paragraph>
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">2-3s Response</span>
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Live Updates</span>
@@ -175,7 +170,7 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Smart Automation</h3>
-              <p className="text-gray-600 mb-4">Intelligent workflows and automated content operations</p>
+              <Paragraph className="text-gray-600 mb-4" text='Intelligent workflows and automated content operations' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Auto-publish</span>
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Bulk Operations</span>
@@ -189,7 +184,7 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Natural Language</h3>
-              <p className="text-gray-600 mb-4">Ask complex questions in plain English, get precise answers</p>
+              <Paragraph className="text-gray-600 mb-4" text='Ask complex questions in plain English, get precise answers' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Conversational</span>
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Context-Aware</span>
@@ -203,7 +198,7 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Enterprise Ready</h3>
-              <p className="text-gray-600 mb-4">Secure, scalable, and built for production environments</p>
+              <Paragraph className="text-gray-600 mb-4" text='Secure, scalable, and built for production environments' />
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Secure</span>
                 <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">Scalable</span>
@@ -219,9 +214,7 @@ export const HomePage: React.FC = () => {
           <h2 className="text-4xl font-bold text-white mb-6">
             Ready to Transform Your Content Workflow?
           </h2>
-          <p className="text-xl text-purple-100 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Join the next generation of content management. Start having intelligent conversations with your ContentStack data today.
-          </p>
+          <Paragraph className="text-xl text-purple-100 mb-10 max-w-2xl mx-auto leading-relaxed"  text='Join the next generation of content management. Start having intelligent conversations with your ContentStack data today.' />
           <a 
             href="/oauth"
             className="inline-flex items-center px-8 py-4 bg-white text-[#6a5dDF] font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
