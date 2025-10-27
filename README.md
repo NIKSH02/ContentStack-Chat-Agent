@@ -4,13 +4,13 @@ Currently working on :
 
 # ContentStack Chat Agent 🤖
 
-[![Hackathon Submission](https://img.shields.io/badge/Hackathon-Submission-brightgreen)](https://www.youtube.com/watch?v=PilOfOXxfeI)
+[![Hackathon Submission](https://img.shields.io/badge/Hackathon-Submission-brightgreen)] <!-- (https://www.youtube.com/watch?v=PilOfOXxfeI) -->
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.0+-61DAFB)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18.0+-green)](https://nodejs.org/)
 
-> 🎥 **Hackathon Demo Video**: [Watch our submission on YouTube](https://www.youtube.com/watch?v=PilOfOXxfeI)
+> 🎥 **Hackathon Demo Video**: [Watch our submission on YouTube] <!-- (https://www.youtube.com/watch?v=PilOfOXxfeI) -->
 
 An intelligent conversational AI assistant for ContentStack that transforms how you interact with your content management system. Built with advanced Multi-LLM architecture and 59+ integrated tools for seamless content operations.
 
